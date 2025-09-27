@@ -37,30 +37,26 @@ def drop_and_recreate_tables():
         
         # Deletar todas as tabelas existentes
         with engine.connect() as conn:
-            # Desabilitar foreign key checks temporariamente
+            # Usar autocommit para evitar transações quebradas
+            trans = conn.begin()
             try:
-                conn.execute(text("SET session_replication_role = replica;"))
-                print("✅ [BUILD] Foreign key checks desabilitados")
+                # Deletar cada tabela (CASCADE para resolver dependências)
+                for table_name in metadata.tables.keys():
+                    try:
+                        conn.execute(text(f"DROP TABLE IF EXISTS {table_name} CASCADE"))
+                        print(f"🗑️ [BUILD] Tabela '{table_name}' deletada")
+                    except Exception as e:
+                        print(f"⚠️ [BUILD] Erro ao deletar tabela '{table_name}': {e}")
+                        # Continuar mesmo com erro em uma tabela específica
+                
+                # Commit das mudanças
+                trans.commit()
+                print("✅ [BUILD] Transação de deleção commitada com sucesso")
+                
             except Exception as e:
-                print(f"⚠️ [BUILD] Aviso ao desabilitar FK checks: {e}")
-            
-            # Deletar cada tabela
-            for table_name in metadata.tables.keys():
-                try:
-                    conn.execute(text(f"DROP TABLE IF EXISTS {table_name} CASCADE"))
-                    print(f"🗑️ [BUILD] Tabela '{table_name}' deletada")
-                except Exception as e:
-                    print(f"⚠️ [BUILD] Erro ao deletar tabela '{table_name}': {e}")
-            
-            # Reabilitar foreign key checks
-            try:
-                conn.execute(text("SET session_replication_role = DEFAULT;"))
-                print("✅ [BUILD] Foreign key checks reabilitados")
-            except Exception as e:
-                print(f"⚠️ [BUILD] Aviso ao reabilitar FK checks: {e}")
-            
-            # Commit das mudanças
-            conn.commit()
+                print(f"❌ [BUILD] Erro crítico na deleção, fazendo rollback: {e}")
+                trans.rollback()
+                raise
         
         print("✅ [BUILD] Todas as tabelas foram deletadas com sucesso!")
         
