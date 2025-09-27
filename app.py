@@ -114,6 +114,37 @@ def create_app(config_name=None):
                         print("✅ Fallback de colunas executado com sucesso!")
                     else:
                         print("✅ Todas as colunas necessárias estão presentes!")
+                
+                # Verificar e adicionar coluna turma_meta na tabela students
+                if inspector.has_table('students'):
+                    student_columns = [col['name'] for col in inspector.get_columns('students')]
+                    
+                    if 'turma_meta' not in student_columns:
+                        print("🔧 Adicionando coluna turma_meta à tabela students...")
+                        try:
+                            with db.engine.connect() as conn:
+                                conn.execute(text("ALTER TABLE students ADD COLUMN turma_meta VARCHAR(10)"))
+                                conn.commit()
+                            print("✅ Coluna turma_meta adicionada com sucesso!")
+                            
+                            # Migrar dados existentes
+                            print("🔄 Migrando dados para turma_meta...")
+                            students_to_migrate = Student.query.filter(Student.turma_meta.is_(None)).all()
+                            migrated_count = 0
+                            
+                            for student in students_to_migrate:
+                                if student.class_info and student.class_info.meta_label:
+                                    student.turma_meta = student.class_info.meta_label
+                                    migrated_count += 1
+                            
+                            if migrated_count > 0:
+                                db.session.commit()
+                                print(f"✅ {migrated_count} alunos migrados para turma_meta!")
+                            
+                        except Exception as e:
+                            print(f"⚠️ Erro ao adicionar/migrar turma_meta: {e}")
+                    else:
+                        print("✅ Coluna turma_meta já existe!")
                         
             except Exception as e:
                 print(f"⚠️ Erro no fallback de verificação de colunas: {e}")
