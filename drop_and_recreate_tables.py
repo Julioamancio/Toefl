@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-Script para DELETAR todas as tabelas e recriar do zero no Render.com
-Este é o approach mais simples e eficaz para resolver problemas de schema
+Script completo para DELETAR e RECRIAR todas as tabelas no Render.com
+Este script garante que as tabelas sejam criadas com o schema correto
 """
 import os
 import sys
 from sqlalchemy import create_engine, text, MetaData
 
 def drop_and_recreate_tables():
-    """Deleta todas as tabelas e recria do zero"""
+    """Deleta todas as tabelas e recria do zero com schema correto"""
     try:
         print("🗑️ [BUILD] Iniciando limpeza completa do banco de dados...")
         
@@ -30,50 +30,89 @@ def drop_and_recreate_tables():
         print(f"📋 [BUILD] Tabelas encontradas: {list(metadata.tables.keys())}")
         
         # Deletar todas as tabelas existentes
-        if metadata.tables:
-            print("🗑️ [BUILD] Deletando todas as tabelas existentes...")
-            with engine.connect() as conn:
-                # Desabilitar foreign key checks temporariamente
-                try:
-                    conn.execute(text("SET session_replication_role = replica;"))
-                    print("✅ [BUILD] Foreign key checks desabilitados")
-                except Exception as e:
-                    print(f"⚠️ [BUILD] Aviso ao desabilitar FK checks: {e}")
-                
-                # Deletar cada tabela
-                for table_name in metadata.tables.keys():
-                    try:
-                        conn.execute(text(f"DROP TABLE IF EXISTS {table_name} CASCADE"))
-                        print(f"🗑️ [BUILD] Tabela '{table_name}' deletada")
-                    except Exception as e:
-                        print(f"⚠️ [BUILD] Erro ao deletar tabela '{table_name}': {e}")
-                
-                # Reabilitar foreign key checks
-                try:
-                    conn.execute(text("SET session_replication_role = DEFAULT;"))
-                    print("✅ [BUILD] Foreign key checks reabilitados")
-                except Exception as e:
-                    print(f"⚠️ [BUILD] Aviso ao reabilitar FK checks: {e}")
-                
-                conn.commit()
-                print("✅ [BUILD] Todas as tabelas foram deletadas com sucesso!")
-        else:
-            print("ℹ️ [BUILD] Nenhuma tabela encontrada para deletar")
+        with engine.connect() as conn:
+            # Desabilitar foreign key checks temporariamente
+            try:
+                conn.execute(text("SET session_replication_role = replica;"))
+                print("✅ [BUILD] Foreign key checks desabilitados")
+            except Exception as e:
+                print(f"⚠️ [BUILD] Aviso ao desabilitar FK checks: {e}")
             
-        print("✅ [BUILD] Limpeza do banco concluída - tabelas serão recriadas pela aplicação")
-        return True
+            # Deletar cada tabela
+            for table_name in metadata.tables.keys():
+                try:
+                    conn.execute(text(f"DROP TABLE IF EXISTS {table_name} CASCADE"))
+                    print(f"🗑️ [BUILD] Tabela '{table_name}' deletada")
+                except Exception as e:
+                    print(f"⚠️ [BUILD] Erro ao deletar tabela '{table_name}': {e}")
+            
+            # Reabilitar foreign key checks
+            try:
+                conn.execute(text("SET session_replication_role = DEFAULT;"))
+                print("✅ [BUILD] Foreign key checks reabilitados")
+            except Exception as e:
+                print(f"⚠️ [BUILD] Aviso ao reabilitar FK checks: {e}")
+            
+            # Commit das mudanças
+            conn.commit()
+        
+        print("✅ [BUILD] Todas as tabelas foram deletadas com sucesso!")
+        
+        # Agora recriar as tabelas com o schema correto
+        print("🔧 [BUILD] Recriando tabelas com schema correto...")
+        
+        # Importar os modelos para criar as tabelas
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        
+        try:
+            from app import db, User, Question, UserAnswer, TestSession
+            print("✅ [BUILD] Modelos importados com sucesso")
+            
+            # Criar todas as tabelas
+            db.metadata.create_all(bind=engine)
+            print("✅ [BUILD] Tabelas recriadas com schema correto!")
+            
+            # Verificar se as tabelas foram criadas corretamente
+            metadata_new = MetaData()
+            metadata_new.reflect(bind=engine)
+            print(f"📋 [BUILD] Tabelas criadas: {list(metadata_new.tables.keys())}")
+            
+            # Verificar especificamente a tabela users
+            if 'users' in metadata_new.tables:
+                users_table = metadata_new.tables['users']
+                columns = [col.name for col in users_table.columns]
+                print(f"👤 [BUILD] Colunas da tabela users: {columns}")
+                
+                # Verificar se as colunas necessárias existem
+                required_columns = ['id', 'username', 'email', 'password_hash', 'is_admin', 'is_teacher', 'is_active', 'created_at', 'last_login']
+                missing_columns = [col for col in required_columns if col not in columns]
+                
+                if missing_columns:
+                    print(f"❌ [BUILD] Colunas faltando: {missing_columns}")
+                    return False
+                else:
+                    print("✅ [BUILD] Todas as colunas necessárias estão presentes!")
+            
+            return True
+            
+        except Exception as e:
+            print(f"❌ [BUILD] Erro ao importar modelos ou criar tabelas: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
         
     except Exception as e:
-        print(f"❌ [BUILD] Erro crítico na limpeza do banco: {e}")
+        print(f"❌ [BUILD] Erro geral no script: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 if __name__ == "__main__":
-    print("🚀 [BUILD] Executando limpeza completa do banco...")
+    print("🚀 [BUILD] Executando script de migração completa...")
     success = drop_and_recreate_tables()
-    
     if success:
-        print("✅ [BUILD] Limpeza concluída - aplicação pode recriar tabelas")
+        print("🎉 [BUILD] Migração completa executada com sucesso!")
         sys.exit(0)
     else:
-        print("❌ [BUILD] Limpeza falhou - mas continuando...")
-        sys.exit(0)  # Não falhar o build, apenas avisar
+        print("💥 [BUILD] Falha na migração!")
+        sys.exit(1)

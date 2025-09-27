@@ -81,22 +81,73 @@ def create_app(config_name=None):
             db.create_all()
             print("✅ Tabelas criadas com sucesso!")
             
+            # Verificar se as colunas necessárias existem (fallback de segurança)
+            try:
+                from sqlalchemy import inspect, text
+                inspector = inspect(db.engine)
+                
+                # Verificar tabela users
+                if inspector.has_table('users'):
+                    columns = [col['name'] for col in inspector.get_columns('users')]
+                    required_columns = ['is_teacher', 'is_active', 'created_at', 'last_login']
+                    missing_columns = [col for col in required_columns if col not in columns]
+                    
+                    if missing_columns:
+                        print(f"⚠️ Colunas faltando detectadas: {missing_columns}")
+                        print("🔧 Adicionando colunas faltantes...")
+                        
+                        with db.engine.connect() as conn:
+                            for col in missing_columns:
+                                try:
+                                    if col == 'is_teacher':
+                                        conn.execute(text("ALTER TABLE users ADD COLUMN is_teacher BOOLEAN DEFAULT FALSE"))
+                                    elif col == 'is_active':
+                                        conn.execute(text("ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT TRUE"))
+                                    elif col == 'created_at':
+                                        conn.execute(text("ALTER TABLE users ADD COLUMN created_at TIMESTAMP"))
+                                    elif col == 'last_login':
+                                        conn.execute(text("ALTER TABLE users ADD COLUMN last_login TIMESTAMP"))
+                                    print(f"✅ Coluna '{col}' adicionada com sucesso")
+                                except Exception as e:
+                                    print(f"⚠️ Erro ao adicionar coluna '{col}': {e}")
+                            conn.commit()
+                        print("✅ Fallback de colunas executado com sucesso!")
+                    else:
+                        print("✅ Todas as colunas necessárias estão presentes!")
+                        
+            except Exception as e:
+                print(f"⚠️ Erro no fallback de verificação de colunas: {e}")
+            
             # Opcional: seed de admin apenas se AUTO_CREATE_TABLES estiver habilitado
             if os.getenv("AUTO_CREATE_TABLES", "0") == "1":
                 admin_user = os.getenv("ADMIN_USERNAME", "admin")
-                if not User.query.filter_by(username=admin_user).first():
-                    print("👤 Criando usuário administrador...")
-                    u = User(
-                        username=admin_user,
-                        email=os.getenv("ADMIN_EMAIL", "admin@example.com"),
-                        is_admin=True,
-                        is_active=True,
-                        created_at=datetime.utcnow()
-                    )
-                    u.set_password(os.getenv("ADMIN_PASSWORD", "admin123"))
-                    db.session.add(u)
-                    db.session.commit()
-                    print(f"✅ Usuário admin criado: {admin_user}")
+                try:
+                    # Verificar se o usuário admin já existe (com tratamento de erro)
+                    existing_user = None
+                    try:
+                        existing_user = User.query.filter_by(username=admin_user).first()
+                    except Exception as query_error:
+                        print(f"⚠️ Erro ao consultar usuário existente: {query_error}")
+                        # Se a consulta falhar, assumir que o usuário não existe
+                        existing_user = None
+                    
+                    if not existing_user:
+                        print("👤 Criando usuário administrador...")
+                        u = User(
+                            username=admin_user,
+                            email=os.getenv("ADMIN_EMAIL", "admin@example.com"),
+                            is_admin=True,
+                            is_active=True,
+                            created_at=datetime.utcnow()
+                        )
+                        u.set_password(os.getenv("ADMIN_PASSWORD", "admin123"))
+                        db.session.add(u)
+                        db.session.commit()
+                        print(f"✅ Usuário admin criado: {admin_user}")
+                    else:
+                        print(f"ℹ️ Usuário admin já existe: {admin_user}")
+                except Exception as admin_error:
+                    print(f"⚠️ Erro ao criar usuário admin: {admin_error}")
     
     # Importar e registrar blueprint da API
     from api_endpoints import api_bp
