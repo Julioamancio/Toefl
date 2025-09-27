@@ -77,6 +77,16 @@ def create_app(config_name=None):
     if not os.getenv("RENDER_BUILD"):
         with app.app_context():
             if os.getenv("AUTO_CREATE_TABLES", "0") == "1":
+                # Primeiro, executar migração de schema se necessário
+                try:
+                    print("🔄 Verificando e executando migração de schema...")
+                    from render_deploy_fix import migrate_user_schema
+                    migrate_user_schema()
+                    print("✅ Migração de schema concluída!")
+                except Exception as e:
+                    print(f"⚠️ Erro na migração de schema: {e}")
+                    # Continuar mesmo com erro de migração
+                
                 print("🔧 Criando tabelas do banco de dados...")
                 db.create_all()
                 print("✅ Tabelas criadas com sucesso!")
