@@ -76,52 +76,7 @@ def create_app(config_name=None):
     # Não rodar nada de banco no BUILD
     if not os.getenv("RENDER_BUILD"):
         with app.app_context():
-            # SEMPRE executar migração de schema primeiro, independente de AUTO_CREATE_TABLES
-            try:
-                print("🔄 Executando migração de schema obrigatória...")
-                from sqlalchemy import create_engine, text, inspect
-                
-                # Conectar diretamente ao banco
-                engine = create_engine(os.getenv('DATABASE_URL'))
-                
-                # Verificar se a tabela users existe
-                inspector = inspect(engine)
-                tables = inspector.get_table_names()
-                
-                if 'users' in tables:
-                    # Verificar se as colunas existem
-                    columns = [col['name'] for col in inspector.get_columns('users')]
-                    
-                    missing_columns = []
-                    if 'is_teacher' not in columns:
-                        missing_columns.append('is_teacher BOOLEAN DEFAULT FALSE')
-                    if 'is_active' not in columns:
-                        missing_columns.append('is_active BOOLEAN DEFAULT TRUE')
-                    if 'created_at' not in columns:
-                        missing_columns.append('created_at TIMESTAMP')
-                    if 'last_login' not in columns:
-                        missing_columns.append('last_login TIMESTAMP')
-                    
-                    if missing_columns:
-                        with engine.connect() as conn:
-                            for column in missing_columns:
-                                try:
-                                    conn.execute(text(f"ALTER TABLE users ADD COLUMN {column}"))
-                                    conn.commit()
-                                    print(f"✅ Coluna adicionada: {column.split()[0]}")
-                                except Exception as e:
-                                    print(f"⚠️ Erro ao adicionar coluna {column.split()[0]}: {e}")
-                    else:
-                        print("✅ Todas as colunas já existem!")
-                else:
-                    print("⚠️ Tabela users não existe ainda - será criada pelo db.create_all()")
-                        
-                print("✅ Migração de schema concluída!")
-            except Exception as e:
-                print(f"⚠️ Erro na migração de schema: {e}")
-                # Continuar mesmo com erro de migração
-            
-            # Criar tabelas sempre
+            # Criar tabelas (migração já foi executada no build)
             print("🔧 Criando tabelas do banco de dados...")
             db.create_all()
             print("✅ Tabelas criadas com sucesso!")
