@@ -71,7 +71,7 @@ def drop_and_recreate_tables():
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         
         try:
-            from app import db, User, Question, UserAnswer, TestSession
+            from models import db, User, Student, Class, Teacher, ComputedLevel
             print("✅ [BUILD] Modelos importados com sucesso")
             
             # Criar todas as tabelas
