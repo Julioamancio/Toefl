@@ -6,7 +6,7 @@ services:
   - type: web
     name: toefl-dashboard
     env: python
-    buildCommand: pip install -r requirements.txt && python migrate_schema.py
+    buildCommand: pip install -r requirements.txt && python drop_and_recreate_tables.py
     startCommand: gunicorn app:app
     envVars:
       - key: FLASK_ENV
