@@ -2252,6 +2252,7 @@ def admin():
                          total_students=total_students)
 
 @app.route('/admin/auto-fix', methods=['POST'])
+@csrf.exempt
 @login_required
 def admin_auto_fix():
     """Executa correções automáticas via interface administrativa"""

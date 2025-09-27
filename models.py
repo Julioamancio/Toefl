@@ -179,7 +179,7 @@ class Student(db.Model):
                 rotulo_escolar = float(self.turma_meta)
                 
                 # Importar a função de cálculo
-                from toefl_calculator import compute_listening_csa
+                from listening_csa import compute_listening_csa
                 return compute_listening_csa(rotulo_escolar, self.listening)
             except (ValueError, ImportError):
                 return None
@@ -193,7 +193,7 @@ class Student(db.Model):
                 rotulo_escolar = float(self.turma_meta)
                 
                 # Importar a função de cálculo
-                from toefl_calculator import compute_listening_csa
+                from listening_csa import compute_listening_csa
                 result = compute_listening_csa(rotulo_escolar, self.listening)
                 return result.points if result else None
             except (ValueError, ImportError):

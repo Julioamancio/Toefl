@@ -120,17 +120,25 @@ def fix_listening_csa():
         
         for student in students:
             try:
-                # Verificar se tem listening score e turma
-                if not student.listening or not student.class_info:
+                # Verificar se tem listening score
+                if not student.listening:
                     continue
                 
-                # Verificar se a turma tem meta_label
-                if not student.class_info.meta_label:
-                    error_msg = f"Turma {student.class_info.name} sem meta_label"
+                # Usar turma_meta individual do estudante (nova implementação)
+                # Se não existir, usar meta_label da turma (compatibilidade)
+                rotulo_escolar = None
+                
+                if hasattr(student, 'turma_meta') and student.turma_meta:
+                    rotulo_escolar = student.turma_meta
+                elif student.class_info and student.class_info.meta_label:
+                    rotulo_escolar = student.class_info.meta_label
+                
+                if not rotulo_escolar:
+                    error_msg = f"Estudante {student.name} sem rótulo escolar (turma_meta ou meta_label)"
                     error_details.append({
                         'student_id': student.id,
                         'student_name': student.name,
-                        'class_name': student.class_info.name,
+                        'class_name': student.class_info.name if student.class_info else 'Sem turma',
                         'error': error_msg
                     })
                     errors += 1
@@ -138,7 +146,7 @@ def fix_listening_csa():
                 
                 # Calcular CSA esperado
                 csa_result = compute_listening_csa(
-                    rotulo_escolar=student.class_info.meta_label,
+                    rotulo_escolar=rotulo_escolar,
                     listening_score=student.listening
                 )
                 
@@ -155,12 +163,13 @@ def fix_listening_csa():
                     correction_details.append({
                         'student_id': student.id,
                         'student_name': student.name,
-                        'class_name': student.class_info.name,
+                        'class_name': student.class_info.name if student.class_info else 'Sem turma',
                         'listening_score': student.listening,
                         'old_csa': current_csa,
                         'new_csa': expected_csa,
                         'expected_level': csa_result['expected_level'],
-                        'obtained_level': csa_result['obtained_level']
+                        'obtained_level': csa_result['obtained_level'],
+                        'rotulo_usado': rotulo_escolar
                     })
                 
             except Exception as e:
