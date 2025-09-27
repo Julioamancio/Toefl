@@ -467,16 +467,145 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('filterForm').submit();
     });
     
-    // Auto-submit nos filtros
-    document.getElementById('class_filter').addEventListener('change', function() {
+    // Função para salvar alterações pendentes antes de aplicar filtros
+    async function saveChangesBeforeFilter() {
+        const pendingChanges = [];
+        
+        // Verificar alterações nos dropdowns de professor
+        document.querySelectorAll('.teacher-dropdown').forEach(dropdown => {
+            const currentValue = parseInt(dropdown.dataset.currentTeacher);
+            const selectedValue = parseInt(dropdown.value);
+            if (currentValue !== selectedValue) {
+                pendingChanges.push({
+                    type: 'teacher',
+                    studentId: dropdown.dataset.studentId,
+                    value: selectedValue,
+                    dropdown: dropdown
+                });
+            }
+        });
+        
+        // Verificar alterações nos dropdowns de turma
+        document.querySelectorAll('.class-dropdown').forEach(dropdown => {
+            const currentValue = parseInt(dropdown.dataset.currentClass);
+            const selectedValue = parseInt(dropdown.value);
+            if (currentValue !== selectedValue) {
+                pendingChanges.push({
+                    type: 'class',
+                    studentId: dropdown.dataset.studentId,
+                    value: selectedValue,
+                    dropdown: dropdown
+                });
+            }
+        });
+        
+        // Verificar alterações nos dropdowns de rótulo escolar
+        document.querySelectorAll('.school-label-dropdown').forEach(dropdown => {
+            const currentValue = dropdown.dataset.currentLabel;
+            const selectedValue = dropdown.value;
+            if (currentValue !== selectedValue) {
+                pendingChanges.push({
+                    type: 'label',
+                    studentId: dropdown.dataset.studentId,
+                    value: selectedValue,
+                    dropdown: dropdown
+                });
+            }
+        });
+        
+        if (pendingChanges.length === 0) {
+            return true; // Nenhuma alteração pendente
+        }
+        
+        // Salvar todas as alterações pendentes
+        const savePromises = pendingChanges.map(change => {
+            let url, body;
+            
+            switch (change.type) {
+                case 'teacher':
+                    url = `/api/alunos/${change.studentId}/alterar-professor`;
+                    body = { teacher_id: change.value };
+                    break;
+                case 'class':
+                    url = `/api/alunos/${change.studentId}/alterar-turma`;
+                    body = { class_id: change.value };
+                    break;
+                case 'label':
+                    url = `/api/alunos/${change.studentId}/alterar-rotulo-escolar`;
+                    body = { school_label: change.value };
+                    break;
+            }
+            
+            return fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+                },
+                body: JSON.stringify(body)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Atualizar o valor atual no dataset
+                    switch (change.type) {
+                        case 'teacher':
+                            change.dropdown.dataset.currentTeacher = change.value;
+                            break;
+                        case 'class':
+                            change.dropdown.dataset.currentClass = change.value;
+                            break;
+                        case 'label':
+                            change.dropdown.dataset.currentLabel = change.value;
+                            break;
+                    }
+                    return { success: true };
+                } else {
+                    return { success: false, error: data.error };
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao salvar alteração:', error);
+                return { success: false, error: error.message };
+            });
+        });
+        
+        try {
+            const results = await Promise.all(savePromises);
+            const failures = results.filter(r => !r.success);
+            
+            if (failures.length > 0) {
+                showToast('warning', `${pendingChanges.length - failures.length} alterações salvas, ${failures.length} falharam`);
+            } else {
+                showToast('success', `${pendingChanges.length} alterações salvas antes de aplicar filtro`);
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('Erro ao salvar alterações:', error);
+            showToast('error', 'Erro ao salvar alterações pendentes');
+            return false;
+        }
+    }
+
+    // Auto-submit nos filtros (com salvamento de alterações pendentes)
+    document.getElementById('class_filter').addEventListener('change', async function() {
+        await saveChangesBeforeFilter();
         document.getElementById('filterForm').submit();
     });
     
-    document.getElementById('teacher_filter').addEventListener('change', function() {
+    document.getElementById('teacher_filter').addEventListener('change', async function() {
+        await saveChangesBeforeFilter();
         document.getElementById('filterForm').submit();
     });
     
-    document.getElementById('cefr_filter').addEventListener('change', function() {
+    document.getElementById('cefr_filter').addEventListener('change', async function() {
+        await saveChangesBeforeFilter();
         document.getElementById('filterForm').submit();
     });
     
