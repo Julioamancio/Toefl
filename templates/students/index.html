@@ -958,7 +958,7 @@ document.addEventListener('change', function(e) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Atualizar o data-current-teacher
+                // Atualizar o data-current-teacher IMEDIATAMENTE
                 e.target.dataset.currentTeacher = teacherId;
                 
                 // Mostrar mensagem de sucesso
@@ -985,8 +985,126 @@ document.addEventListener('change', function(e) {
     }
 });
 
-// Função para mostrar toast
-function showToast(message, type) {
+// Gerenciar mudanças de turma
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('class-dropdown')) {
+        const studentId = e.target.dataset.studentId;
+        const classId = e.target.value;
+        const currentClass = e.target.dataset.currentClass;
+        
+        // Se não houve mudança, não fazer nada
+        if (classId === currentClass) {
+            return;
+        }
+        
+        // Mostrar spinner e desabilitar o dropdown durante a requisição
+        e.target.disabled = true;
+        const spinner = document.getElementById(`class-spinner-${studentId}`);
+        if (spinner) {
+            spinner.classList.remove('d-none');
+        }
+        
+        fetch(`/api/alunos/${studentId}/alterar-turma`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+            },
+            body: JSON.stringify({
+                class_id: parseInt(classId)
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Atualizar o data-current-class IMEDIATAMENTE
+                e.target.dataset.currentClass = classId;
+                
+                // Mostrar mensagem de sucesso
+                showToast('success', data.message || 'Turma atualizada com sucesso!');
+            } else {
+                // Reverter a seleção
+                e.target.value = currentClass;
+                showToast('error', data.error || 'Erro ao atualizar turma');
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            // Reverter a seleção
+            e.target.value = currentClass;
+            showToast('error', 'Erro de conexão ao atualizar turma');
+        })
+        .finally(() => {
+            // Reabilitar o dropdown e esconder spinner
+            e.target.disabled = false;
+            if (spinner) {
+                spinner.classList.add('d-none');
+            }
+        });
+    }
+});
+
+// Gerenciar mudanças de rótulo escolar
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('school-label-dropdown')) {
+        const studentId = e.target.dataset.studentId;
+        const schoolLabel = e.target.value;
+        const currentLabel = e.target.dataset.currentLabel;
+        
+        // Se não houve mudança, não fazer nada
+        if (schoolLabel === currentLabel) {
+            return;
+        }
+        
+        // Mostrar spinner e desabilitar o dropdown durante a requisição
+        e.target.disabled = true;
+        const spinner = document.getElementById(`label-spinner-${studentId}`);
+        if (spinner) {
+            spinner.classList.remove('d-none');
+        }
+        
+        fetch(`/api/alunos/${studentId}/alterar-rotulo-escolar`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+            },
+            body: JSON.stringify({
+                school_label: schoolLabel
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Atualizar o data-current-label IMEDIATAMENTE
+                e.target.dataset.currentLabel = schoolLabel;
+                
+                // Mostrar mensagem de sucesso
+                showToast('success', data.message || 'Rótulo escolar atualizado com sucesso!');
+            } else {
+                // Reverter a seleção
+                e.target.value = currentLabel;
+                showToast('error', data.error || 'Erro ao atualizar rótulo escolar');
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            // Reverter a seleção
+            e.target.value = currentLabel;
+            showToast('error', 'Erro de conexão ao atualizar rótulo escolar');
+        })
+        .finally(() => {
+            // Reabilitar o dropdown e esconder spinner
+            e.target.disabled = false;
+            if (spinner) {
+                spinner.classList.add('d-none');
+            }
+        });
+    }
+});
+
+// Função para mostrar toast melhorada
+function showToast(type, message) {
     // Criar toast se não existir
     let toastContainer = document.getElementById('toast-container');
     if (!toastContainer) {
@@ -998,11 +1116,13 @@ function showToast(message, type) {
     }
     
     const toastId = 'toast-' + Date.now();
-    const bgClass = type === 'success' ? 'bg-success' : 'bg-danger';
+    const bgClass = type === 'success' ? 'bg-success' : (type === 'warning' ? 'bg-warning' : 'bg-danger');
+    const textClass = type === 'warning' ? 'text-dark' : 'text-white';
     
     const toastHtml = `
-        <div id="${toastId}" class="toast ${bgClass} text-white" role="alert">
+        <div id="${toastId}" class="toast ${bgClass} ${textClass}" role="alert">
             <div class="toast-body">
+                <i class="bi bi-${type === 'success' ? 'check-circle' : (type === 'warning' ? 'exclamation-triangle' : 'x-circle')} me-2"></i>
                 ${message}
             </div>
         </div>
@@ -1011,7 +1131,7 @@ function showToast(message, type) {
     toastContainer.insertAdjacentHTML('beforeend', toastHtml);
     
     const toastElement = document.getElementById(toastId);
-    const toast = new bootstrap.Toast(toastElement, { delay: 3000 });
+    const toast = new bootstrap.Toast(toastElement, { delay: 4000 });
     toast.show();
     
     // Remover toast após ser escondido
@@ -1203,39 +1323,9 @@ document.getElementById('save-all-changes-btn').addEventListener('click', functi
     });
     
     if (allChanges.length === 0) {
-        // Mesmo sem alterações detectadas, vamos coletar todos os valores atuais e salvar
-        document.querySelectorAll('.teacher-dropdown').forEach(dropdown => {
-            allChanges.push({
-                type: 'teacher',
-                studentId: dropdown.dataset.studentId,
-                value: dropdown.value,
-                dropdown: dropdown
-            });
-        });
-        
-        document.querySelectorAll('.class-dropdown').forEach(dropdown => {
-            allChanges.push({
-                type: 'class',
-                studentId: dropdown.dataset.studentId,
-                value: dropdown.value,
-                dropdown: dropdown
-            });
-        });
-        
-        document.querySelectorAll('.school-label-dropdown').forEach(dropdown => {
-            allChanges.push({
-                type: 'school_label',
-                studentId: dropdown.dataset.studentId,
-                value: dropdown.value,
-                dropdown: dropdown
-            });
-        });
-        
-        if (allChanges.length === 0) {
-            showToast('Nenhum dado encontrado para salvar', 'info');
-            resetSaveAllButton();
-            return;
-        }
+        showToast('success', 'Nenhuma alteração pendente para salvar');
+        resetSaveAllButton();
+        return;
     }
     
     // Processar todas as alterações
@@ -1272,7 +1362,12 @@ document.getElementById('save-all-changes-btn').addEventListener('click', functi
             },
             body: JSON.stringify(data)
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(result => {
             if (result.success) {
                 // Atualizar o dataset do dropdown
@@ -1285,6 +1380,10 @@ document.getElementById('save-all-changes-btn').addEventListener('click', functi
                 }
             }
             return result;
+        })
+        .catch(error => {
+            console.error('Erro na requisição:', error);
+            return { success: false, error: error.message };
         });
     });
     
