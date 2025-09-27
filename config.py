@@ -59,7 +59,7 @@ class ProductionConfig(Config):
     }
     
     # Configurações de segurança para produção
-    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'False').lower() in ('true', '1', 'yes')  # Allow HTTP during local/internal access
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
     

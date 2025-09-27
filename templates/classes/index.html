@@ -139,22 +139,17 @@
                     </thead>
                     <tbody>
                         {% for class in classes %}
-                            <tr>
+                            <tr class="{% if loop.index0 % 2 == 1 %}table-light{% endif %}">
                                 <td>
                                     <div class="form-check">
                                         <input class="form-check-input class-checkbox" type="checkbox" value="{{ class.id }}" onchange="updateDeleteButton()">
                                     </div>
                                 </td>
                                 <td>
-                                    <div class="d-flex align-items-center">
-                                        <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2">
-                                            {{ class.name[0].upper() }}
-                                        </div>
-                                        <div>
-                                            <strong>{{ class.name }}</strong>
-                                            <br>
-                                            <small class="text-muted">Criada em {{ class.created_at.strftime('%d/%m/%Y') }}</small>
-                                        </div>
+                                    <div>
+                                        <strong>{{ class.name }}</strong>
+                                        <br>
+                                        <small class="text-muted">Criada em {{ class.created_at.strftime('%d/%m/%Y') }}</small>
                                     </div>
                                 </td>
                                 <td>

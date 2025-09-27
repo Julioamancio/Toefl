@@ -75,7 +75,7 @@
                     </thead>
                     <tbody>
                         {% for teacher in teachers %}
-                        <tr>
+                        <tr{% if loop.index % 2 == 0 %} class="table-light"{% endif %}>
                             <td>
                                 <input type="checkbox" name="teacher_ids" value="{{ teacher.id }}" class="form-check-input teacher-checkbox">
                             </td>

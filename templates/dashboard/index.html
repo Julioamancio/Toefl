@@ -218,18 +218,22 @@
                                         <tr>
                                             <th>#</th>
                                             <th>Nome</th>
+                                            <th>Turma</th>
                                             <th>Pontuação</th>
                                             <th>Nível</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {% for student in top_students_6th %}
-                                        <tr>
+                                        <tr{% if loop.index0 % 2 == 1 %} class="table-light"{% endif %}>
                                             <td>{{ loop.index }}</td>
                                             <td>
                                                 <a href="{{ url_for('student_detail', id=student.id) }}" class="text-decoration-none">
                                                     {{ student.name }}
                                                 </a>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-info">{{ student.class_info.name if student.class_info else 'N/A' }}</span>
                                             </td>
                                             <td><strong>{{ student.total or 'N/A' }}</strong></td>
                                             <td>
@@ -273,18 +277,22 @@
                                         <tr>
                                             <th>#</th>
                                             <th>Nome</th>
+                                            <th>Turma</th>
                                             <th>Pontuação</th>
                                             <th>Nível</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {% for student in top_students_9th %}
-                                        <tr>
+                                        <tr{% if loop.index0 % 2 == 1 %} class="table-light"{% endif %}>
                                             <td>{{ loop.index }}</td>
                                             <td>
                                                 <a href="{{ url_for('student_detail', id=student.id) }}" class="text-decoration-none">
                                                     {{ student.name }}
                                                 </a>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-info">{{ student.class_info.name if student.class_info else 'N/A' }}</span>
                                             </td>
                                             <td><strong>{{ student.total or 'N/A' }}</strong></td>
                                             <td>

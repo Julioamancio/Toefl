@@ -2200,6 +2200,43 @@ def admin_auto_fix():
             'message': f'Erro interno: {str(e)}'
         }), 500
 
+@app.route('/api/clear-cache', methods=['POST'])
+@login_required
+def clear_cache():
+    """Endpoint para limpar cache das páginas - disponível para professores e administradores"""
+    if not (current_user.is_admin or current_user.is_teacher):
+        return jsonify({
+            'success': False,
+            'message': 'Acesso negado. Apenas professores e administradores podem limpar o cache.'
+        }), 403
+    
+    try:
+        # Limpar cache do Flask (se houver)
+        if hasattr(app, 'cache'):
+            app.cache.clear()
+        
+        # Limpar cache de funções com @lru_cache
+        from functools import lru_cache
+        # Encontrar e limpar todas as funções com cache
+        for name in dir():
+            obj = globals().get(name)
+            if hasattr(obj, 'cache_clear'):
+                obj.cache_clear()
+        
+        # Forçar recarregamento de dados estáticos se necessário
+        # Aqui você pode adicionar lógica específica para limpar outros tipos de cache
+        
+        return jsonify({
+            'success': True,
+            'message': 'Cache limpo com sucesso!'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao limpar cache: {str(e)}'
+        }), 500
+
 @app.route('/admin/cefr-fix', methods=['POST'])
 @login_required
 def admin_cefr_fix():
