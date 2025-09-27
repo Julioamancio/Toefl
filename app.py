@@ -76,17 +76,20 @@ def create_app(config_name=None):
     # Não rodar nada de banco no BUILD
     if not os.getenv("RENDER_BUILD"):
         with app.app_context():
-            if os.getenv("AUTO_CREATE_TABLES", "0") == "1":
-                # Primeiro, executar migração de schema diretamente
-                try:
-                    print("🔄 Executando migração de schema direta...")
-                    from sqlalchemy import create_engine, text, inspect
-                    
-                    # Conectar diretamente ao banco
-                    engine = create_engine(os.getenv('DATABASE_URL'))
-                    inspector = inspect(engine)
-                    
-                    # Verificar se a coluna is_teacher existe
+            # SEMPRE executar migração de schema primeiro, independente de AUTO_CREATE_TABLES
+            try:
+                print("🔄 Executando migração de schema obrigatória...")
+                from sqlalchemy import create_engine, text, inspect
+                
+                # Conectar diretamente ao banco
+                engine = create_engine(os.getenv('DATABASE_URL'))
+                
+                # Verificar se a tabela users existe
+                inspector = inspect(engine)
+                tables = inspector.get_table_names()
+                
+                if 'users' in tables:
+                    # Verificar se as colunas existem
                     columns = [col['name'] for col in inspector.get_columns('users')]
                     
                     missing_columns = []
@@ -110,17 +113,21 @@ def create_app(config_name=None):
                                     print(f"⚠️ Erro ao adicionar coluna {column.split()[0]}: {e}")
                     else:
                         print("✅ Todas as colunas já existem!")
+                else:
+                    print("⚠️ Tabela users não existe ainda - será criada pelo db.create_all()")
                         
-                    print("✅ Migração de schema concluída!")
-                except Exception as e:
-                    print(f"⚠️ Erro na migração de schema: {e}")
-                    # Continuar mesmo com erro de migração
-                
-                print("🔧 Criando tabelas do banco de dados...")
-                db.create_all()
-                print("✅ Tabelas criadas com sucesso!")
-                
-                # Opcional: seed de admin
+                print("✅ Migração de schema concluída!")
+            except Exception as e:
+                print(f"⚠️ Erro na migração de schema: {e}")
+                # Continuar mesmo com erro de migração
+            
+            # Criar tabelas sempre
+            print("🔧 Criando tabelas do banco de dados...")
+            db.create_all()
+            print("✅ Tabelas criadas com sucesso!")
+            
+            # Opcional: seed de admin apenas se AUTO_CREATE_TABLES estiver habilitado
+            if os.getenv("AUTO_CREATE_TABLES", "0") == "1":
                 admin_user = os.getenv("ADMIN_USERNAME", "admin")
                 if not User.query.filter_by(username=admin_user).first():
                     print("👤 Criando usuário administrador...")
