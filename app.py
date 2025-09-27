@@ -81,7 +81,6 @@ def create_app(config_name=None):
                 try:
                     print("🔄 Executando migração de schema direta...")
                     from sqlalchemy import create_engine, text, inspect
-                    import os
                     
                     # Conectar diretamente ao banco
                     engine = create_engine(os.getenv('DATABASE_URL'))
