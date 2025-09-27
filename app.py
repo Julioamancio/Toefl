@@ -77,11 +77,41 @@ def create_app(config_name=None):
     if not os.getenv("RENDER_BUILD"):
         with app.app_context():
             if os.getenv("AUTO_CREATE_TABLES", "0") == "1":
-                # Primeiro, executar migração de schema se necessário
+                # Primeiro, executar migração de schema diretamente
                 try:
-                    print("🔄 Verificando e executando migração de schema...")
-                    from render_deploy_fix import migrate_user_schema
-                    migrate_user_schema()
+                    print("🔄 Executando migração de schema direta...")
+                    from sqlalchemy import create_engine, text, inspect
+                    import os
+                    
+                    # Conectar diretamente ao banco
+                    engine = create_engine(os.getenv('DATABASE_URL'))
+                    inspector = inspect(engine)
+                    
+                    # Verificar se a coluna is_teacher existe
+                    columns = [col['name'] for col in inspector.get_columns('users')]
+                    
+                    missing_columns = []
+                    if 'is_teacher' not in columns:
+                        missing_columns.append('is_teacher BOOLEAN DEFAULT FALSE')
+                    if 'is_active' not in columns:
+                        missing_columns.append('is_active BOOLEAN DEFAULT TRUE')
+                    if 'created_at' not in columns:
+                        missing_columns.append('created_at TIMESTAMP')
+                    if 'last_login' not in columns:
+                        missing_columns.append('last_login TIMESTAMP')
+                    
+                    if missing_columns:
+                        with engine.connect() as conn:
+                            for column in missing_columns:
+                                try:
+                                    conn.execute(text(f"ALTER TABLE users ADD COLUMN {column}"))
+                                    conn.commit()
+                                    print(f"✅ Coluna adicionada: {column.split()[0]}")
+                                except Exception as e:
+                                    print(f"⚠️ Erro ao adicionar coluna {column.split()[0]}: {e}")
+                    else:
+                        print("✅ Todas as colunas já existem!")
+                        
                     print("✅ Migração de schema concluída!")
                 except Exception as e:
                     print(f"⚠️ Erro na migração de schema: {e}")
