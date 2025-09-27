@@ -1,0 +1,972 @@
+{% extends "base.html" %}
+
+{% block title %}Alunos - TOEFL{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-people me-2"></i>Alunos</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{{ url_for('upload') }}" class="btn btn-sm btn-primary">
+                <i class="bi bi-cloud-upload me-1"></i>Importar Dados
+            </a>
+            <a href="{{ url_for('export_students') }}" class="btn btn-sm btn-outline-success">
+                <i class="bi bi-download me-1"></i>Exportar CSV
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros e Busca -->
+<div class="card shadow mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3" id="filterForm">
+            <div class="col-md-3">
+                <label for="search" class="form-label">Buscar por nome(s)</label>
+                <div class="input-group">
+                    <textarea class="form-control" id="search" name="search" rows="3"
+                           placeholder="Digite um ou múltiplos nomes separados por vírgula ou quebra de linha...
+Exemplo:
+Diego Lago
+Maria Silva, João Santos
+Pedro; Ana">{{ request.args.get('search', '') }}</textarea>
+                    <button class="btn btn-outline-secondary" type="button" id="clearSearch">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+                <small class="form-text text-muted">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Separe múltiplos nomes por vírgula (,) ou quebra de linha. 
+                    A busca encontra partes dos nomes independente da ordem.
+                </small>
+            </div>
+            <div class="col-md-2">
+                <label for="class_filter" class="form-label">Filtrar por turma</label>
+                <select class="form-select" id="class_filter" name="class_filter">
+                    <option value="">Todas as turmas</option>
+                    {% for class in classes %}
+                        <option value="{{ class.id }}" 
+                                {{ 'selected' if request.args.get('class_filter') == class.id|string or class_filter == class.id else '' }}>
+                            {{ class.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="teacher_filter" class="form-label">Filtrar por professor</label>
+                <select class="form-select" id="teacher_filter" name="teacher_filter">
+                    <option value="">Todos os professores</option>
+                    {% for teacher in teachers %}
+                        <option value="{{ teacher.id }}" 
+                                {{ 'selected' if request.args.get('teacher_filter') == teacher.id|string else '' }}>
+                            {{ teacher.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="cefr_filter" class="form-label">Filtrar por nível CEFR</label>
+                <select class="form-select" id="cefr_filter" name="cefr_filter">
+                    <option value="">Todos os níveis</option>
+                    <option value="B2" {{ 'selected' if request.args.get('cefr_filter') == 'B2' else '' }}>B2</option>
+                    <option value="B1" {{ 'selected' if request.args.get('cefr_filter') == 'B1' else '' }}>B1</option>
+                    <option value="A2" {{ 'selected' if request.args.get('cefr_filter') == 'A2' else '' }}>A2</option>
+                    <option value="A1" {{ 'selected' if request.args.get('cefr_filter') == 'A1' else '' }}>A1</option>
+                    <option value="Below A1" {{ 'selected' if request.args.get('cefr_filter') == 'Below A1' else '' }}>Below A1</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">&nbsp;</label>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search me-1"></i>Filtrar
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Estatísticas Rápidas -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="mb-0">{{ students.total }}</h4>
+                        <p class="mb-0">Total de Alunos</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-people" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="mb-0">{{ stats.avg_total|round(1) if stats.avg_total else 0 }}</h4>
+                        <p class="mb-0">Média Geral</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-graph-up" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="mb-0">{{ stats.predominant_cefr or 'N/A' }}</h4>
+                        <p class="mb-0">Nível Predominante</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-award" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-dark">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="mb-0">{{ classes|length }}</h4>
+                        <p class="mb-0">Turmas Ativas</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-collection" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabela de Alunos -->
+<div class="card shadow">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <h6 class="m-0 font-weight-bold text-primary">
+            <i class="bi bi-table me-2"></i>Lista de Alunos
+        </h6>
+        <div class="d-flex align-items-center gap-2">
+            <!-- Botões de ação em lote -->
+            <div id="bulkActions" class="d-none">
+                <button type="button" class="btn btn-sm btn-danger" id="deleteSelectedBtn">
+                    <i class="bi bi-trash me-1"></i>Deletar Selecionados (<span id="selectedCount">0</span>)
+                </button>
+            </div>
+            <!-- Botão Selecionar Todos -->
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="selectAllVisible" onchange="toggleSelectAllVisible()">
+                <label class="form-check-label" for="selectAllVisible">
+                    Selecionar Todos
+                </label>
+            </div>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" 
+                        data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-sort-down me-1"></i>Ordenar
+                </button>
+                <ul class="dropdown-menu">
+                    {% set args_without_sort = request.args.copy() %}
+                    {% set _ = args_without_sort.pop('sort', None) %}
+                    <li><a class="dropdown-item" href="{{ url_for('students', sort='name', **args_without_sort) }}">Nome (A-Z)</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('students', sort='name_desc', **args_without_sort) }}">Nome (Z-A)</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="{{ url_for('students', sort='class', **args_without_sort) }}">Turma (A-Z)</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('students', sort='class_desc', **args_without_sort) }}">Turma (Z-A)</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="{{ url_for('students', sort='total_desc', **args_without_sort) }}">Maior Pontuação</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('students', sort='total', **args_without_sort) }}">Menor Pontuação</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('students', sort='cefr', **args_without_sort) }}">Nível CEFR</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        {% if students.items %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="40">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="selectAll">
+                                    <label class="form-check-label" for="selectAll"></label>
+                                </div>
+                            </th>
+                            <th>Nome</th>
+                            <th>Professor</th>
+                            <th>Turma</th>
+                            <th class="text-center">Rótulo Escolar</th>
+                            <th class="text-center">Listening</th>
+                            <th class="text-center">Listening CSA</th>
+                            <th class="text-center">Reading</th>
+                            <th class="text-center">LFM</th>
+                            <th class="text-center">Total</th>
+                            <th class="text-center">Nível CEFR</th>
+                            <th class="text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in students.items %}
+                            <tr>
+                                <td>
+                                    <div class="form-check">
+                                        <input class="form-check-input student-checkbox" type="checkbox" 
+                                               value="{{ student.id }}" id="student_{{ student.id }}">
+                                        <label class="form-check-label" for="student_{{ student.id }}"></label>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2">
+                                            {{ student.name[0].upper() }}
+                                        </div>
+                                        <strong>{{ student.name }}</strong>
+                                    </div>
+                                </td>
+                                <td>
+                                    <select class="form-select form-select-sm teacher-dropdown" 
+                                            data-student-id="{{ student.id }}" 
+                                            data-current-teacher="{{ student.teacher_id or 0 }}">
+                                        <option value="0" {% if not student.teacher_id %}selected{% endif %}>Sem professor</option>
+                                        {% for teacher in teachers %}
+                                            <option value="{{ teacher.id }}" 
+                                                    {% if student.teacher_id == teacher.id %}selected{% endif %}>
+                                                {{ teacher.name }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td>
+                                    <select class="form-select form-select-sm class-dropdown" 
+                                            data-student-id="{{ student.id }}" 
+                                            data-current-class="{{ student.class_id or 0 }}">
+                                        <option value="0" {% if not student.class_id %}selected{% endif %}>Sem turma</option>
+                                        {% for class in classes %}
+                                            <option value="{{ class.id }}" 
+                                                    {% if student.class_id == class.id %}selected{% endif %}>
+                                                {{ class.name }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td class="text-center">
+                                    <select class="form-select form-select-sm school-label-dropdown" 
+                                            data-student-id="{{ student.id }}" 
+                                            data-current-label="{{ student.class_info.meta_label if student.class_info else '' }}">
+                                        <option value="" {% if not (student.class_info and student.class_info.meta_label) %}selected{% endif %}>-</option>
+                                        <option value="6.1" {% if student.class_info and student.class_info.meta_label == '6.1' %}selected{% endif %}>6.1</option>
+                                        <option value="6.2" {% if student.class_info and student.class_info.meta_label == '6.2' %}selected{% endif %}>6.2</option>
+                                        <option value="6.3" {% if student.class_info and student.class_info.meta_label == '6.3' %}selected{% endif %}>6.3</option>
+                                        <option value="9.1" {% if student.class_info and student.class_info.meta_label == '9.1' %}selected{% endif %}>9.1</option>
+                                        <option value="9.2" {% if student.class_info and student.class_info.meta_label == '9.2' %}selected{% endif %}>9.2</option>
+                                        <option value="9.3" {% if student.class_info and student.class_info.meta_label == '9.3' %}selected{% endif %}>9.3</option>
+                                    </select>
+                                </td>
+                                <td class="text-center">
+                                    {% if student.listening %}
+                                        <span class="badge bg-light text-dark">{{ student.listening }}</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if student.class_info and student.class_info.meta_label and student.listening %}
+                                        {% set listening_csa = student.compute_listening_csa() %}
+                                        {% if listening_csa %}
+                                            <div class="small">
+                                                <div><strong style="color: rgb(0, 155, 13);">{{ listening_csa.points }}</strong></div>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-light text-dark">{{ student.reading or '-' }}</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-light text-dark">{{ student.lfm or '-' }}</span>
+                                </td>
+                                <td class="text-center">
+                                    <strong class="text-primary">{{ student.total or '-' }}</strong>
+                                </td>
+                                <td class="text-center">
+                                    {% set cefr = student.get_cefr_level() %}
+                                    {% if cefr == 'B2' %}
+                                        <span class="badge bg-success">{{ cefr }}</span>
+                                    {% elif cefr == 'B1' %}
+                                        <span class="badge bg-primary">{{ cefr }}</span>
+                                    {% elif cefr == 'A2' %}
+                                        <span class="badge bg-warning text-dark">{{ cefr }}</span>
+                                    {% elif cefr == 'A1' %}
+                                        <span class="badge bg-info">{{ cefr }}</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">{{ cefr }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <a href="{{ url_for('student_detail', id=student.id) }}" 
+                                           class="btn btn-outline-primary" 
+                                           data-bs-toggle="tooltip" title="Ver Detalhes">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a href="{{ url_for('edit_student_class', id=student.id) }}" 
+                                           class="btn btn-outline-warning" 
+                                           data-bs-toggle="tooltip" title="Alterar Turma">
+                                            <i class="bi bi-collection"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-outline-info" 
+                                                data-bs-toggle="tooltip" title="Informações Rápidas"
+                                                onclick="showQuickInfo({{ student.id }})">
+                                            <i class="bi bi-info-circle"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Paginação -->
+            {% if students.pages > 1 %}
+                <div class="card-footer">
+                    <nav aria-label="Navegação de páginas">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% set args_without_page = request.args.copy() %}
+                            {% set _ = args_without_page.pop('page', None) %}
+                            {% if students.has_prev %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('students', page=students.prev_num, **args_without_page) }}">
+                                        <i class="bi bi-chevron-left"></i>
+                                    </a>
+                                </li>
+                            {% endif %}
+                            
+                            {% for page_num in students.iter_pages() %}
+                                {% if page_num %}
+                                    {% if page_num != students.page %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('students', page=page_num, **args_without_page) }}">
+                                                {{ page_num }}
+                                            </a>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ page_num }}</span>
+                                        </li>
+                                    {% endif %}
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">…</span>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if students.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('students', page=students.next_num, **args_without_page) }}">
+                                        <i class="bi bi-chevron-right"></i>
+                                    </a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    
+                    <div class="text-center mt-2">
+                        <small class="text-muted">
+                            Mostrando {{ students.per_page * (students.page - 1) + 1 }} a 
+                            {{ students.per_page * students.page if students.page < students.pages else students.total }} 
+                            de {{ students.total }} alunos
+                        </small>
+                    </div>
+                </div>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-people text-muted" style="font-size: 4rem;"></i>
+                <h4 class="text-muted mt-3">Nenhum aluno encontrado</h4>
+                <p class="text-muted">Tente ajustar os filtros ou importe novos dados.</p>
+                <a href="{{ url_for('upload') }}" class="btn btn-primary">
+                    <i class="bi bi-cloud-upload me-1"></i>Importar Dados
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal de Informações Rápidas -->
+<div class="modal fade" id="quickInfoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Informações do Aluno</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="quickInfoContent">
+                <!-- Conteúdo será carregado via JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <a href="#" class="btn btn-primary" id="viewDetailsBtn">Ver Detalhes Completos</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Limpar busca
+    document.getElementById('clearSearch').addEventListener('click', function() {
+        document.getElementById('search').value = '';
+        document.getElementById('filterForm').submit();
+    });
+    
+    // Auto-submit nos filtros
+    document.getElementById('class_filter').addEventListener('change', function() {
+        document.getElementById('filterForm').submit();
+    });
+    
+    document.getElementById('teacher_filter').addEventListener('change', function() {
+        document.getElementById('filterForm').submit();
+    });
+    
+    document.getElementById('cefr_filter').addEventListener('change', function() {
+        document.getElementById('filterForm').submit();
+    });
+    
+    // Busca em tempo real (com debounce)
+    let searchTimeout;
+    document.getElementById('search').addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            document.getElementById('filterForm').submit();
+        }, 500);
+    });
+});
+
+// Função para mostrar informações rápidas
+function showQuickInfo(studentId) {
+    const modal = new bootstrap.Modal(document.getElementById('quickInfoModal'));
+    const content = document.getElementById('quickInfoContent');
+    const viewDetailsBtn = document.getElementById('viewDetailsBtn');
+    
+    // Mostrar loading
+    content.innerHTML = `
+        <div class="text-center py-3">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Carregando...</span>
+            </div>
+        </div>
+    `;
+    
+    // Atualizar link do botão
+    viewDetailsBtn.href = `/alunos/${studentId}`;
+    
+    modal.show();
+    
+    // Simular carregamento de dados (substituir por requisição AJAX real)
+    setTimeout(() => {
+        content.innerHTML = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6 class="text-primary">Pontuações</h6>
+                    <ul class="list-unstyled">
+                        <li><strong>Listening:</strong> <span class="badge bg-light text-dark">280</span></li>
+                        <li><strong>Reading:</strong> <span class="badge bg-light text-dark">295</span></li>
+                        <li><strong>LFM:</strong> <span class="badge bg-light text-dark">290</span></li>
+                        <li><strong>Total:</strong> <span class="badge bg-primary">865</span></li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="text-primary">Níveis CEFR</h6>
+                    <ul class="list-unstyled">
+                        <li><strong>Listening:</strong> <span class="badge bg-success">B2</span></li>
+                        <li><strong>Reading:</strong> <span class="badge bg-success">B2</span></li>
+                        <li><strong>LFM:</strong> <span class="badge bg-success">B2</span></li>
+                        <li><strong>Geral:</strong> <span class="badge bg-success">B2</span></li>
+                    </ul>
+                </div>
+            </div>
+            <hr>
+            <div class="row">
+                <div class="col-md-6">
+                    <h6 class="text-primary">Outros Dados</h6>
+                    <ul class="list-unstyled">
+                        <li><strong>Lexile:</strong> 1200L</li>
+                        <li><strong>OSL:</strong> Advanced</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="text-primary">Turma</h6>
+                    <span class="badge bg-secondary">Turma A - 2024</span>
+                </div>
+            </div>
+        `;
+    }, 1000);
+}
+</script>
+
+<style>
+.avatar-sm {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge {
+    font-size: 0.75rem;
+}
+
+.btn-group-sm > .btn {
+    padding: 0.25rem 0.5rem;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(33, 40, 50, 0.15);
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+.class-dropdown {
+    min-width: 120px;
+}
+
+.class-dropdown:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Configurar dropdowns de turma
+    const classDropdowns = document.querySelectorAll('.class-dropdown');
+    
+    classDropdowns.forEach(dropdown => {
+        dropdown.addEventListener('change', function() {
+            const studentId = this.dataset.studentId;
+            const newClassId = parseInt(this.value);
+            const currentClassId = parseInt(this.dataset.currentClass);
+            
+            // Se não houve mudança, não fazer nada
+            if (newClassId === currentClassId) {
+                return;
+            }
+            
+            // Desabilitar o dropdown durante a requisição
+            this.disabled = true;
+            const originalValue = this.dataset.currentClass;
+            
+            // Fazer requisição AJAX
+            fetch(`/api/alunos/${studentId}/alterar-turma`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+                },
+                body: JSON.stringify({
+                    class_id: newClassId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Atualizar o valor atual
+                    this.dataset.currentClass = newClassId;
+                    
+                    // Mostrar mensagem de sucesso
+                    showToast('success', data.message);
+                } else {
+                    // Reverter para o valor anterior
+                    this.value = originalValue;
+                    showToast('error', data.error || 'Erro ao alterar turma');
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                // Reverter para o valor anterior
+                this.value = originalValue;
+                showToast('error', 'Erro de conexão. Tente novamente.');
+            })
+            .finally(() => {
+                // Reabilitar o dropdown
+                this.disabled = false;
+            });
+        });
+    });
+
+    // Event listeners para dropdowns de rótulo escolar
+    document.querySelectorAll('.school-label-dropdown').forEach(dropdown => {
+        dropdown.addEventListener('change', function() {
+            const studentId = this.dataset.studentId;
+            const newLabel = this.value;
+            const currentLabel = this.dataset.currentLabel;
+            
+            // Se não houve mudança, não fazer nada
+            if (newLabel === currentLabel) {
+                return;
+            }
+            
+            // Desabilitar o dropdown durante a requisição
+            this.disabled = true;
+            const originalValue = this.dataset.currentLabel;
+            
+            // Fazer requisição AJAX
+            fetch(`/api/alunos/${studentId}/alterar-rotulo-escolar`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+                },
+                body: JSON.stringify({
+                    school_label: newLabel
+                })
+            })
+            .then(response => {
+                console.log('🔍 DEBUG: Resposta HTTP recebida:', response.status, response.statusText);
+                return response.json();
+            })
+            .then(data => {
+                console.log('🔍 DEBUG: Resposta da API completa:', data);
+                if (data.success) {
+                    console.log('✅ DEBUG: API retornou sucesso');
+                    
+                    // Atualizar o valor atual
+                    this.dataset.currentLabel = newLabel;
+                    console.log('🔍 DEBUG: Rótulo atualizado no dataset para:', newLabel);
+                    
+                    // Mostrar mensagem de sucesso
+                    showToast('success', data.message);
+                    
+                    // Atualizar a nota de listening na interface se disponível
+                    if (data.updated_data) {
+                        console.log('📊 DEBUG: Dados atualizados recebidos:', data.updated_data);
+                        const row = this.closest('tr');
+                        console.log('🔍 DEBUG: Linha da tabela encontrada:', row);
+                        
+                        // Coluna CEFR Listening removida da interface
+                        // Mantendo apenas atualização do Listening CSA se necessário
+                    }
+                } else {
+                    // Reverter para o valor anterior
+                    this.value = originalValue;
+                    showToast('error', data.error || 'Erro ao alterar rótulo escolar');
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                // Reverter para o valor anterior
+                this.value = originalValue;
+                showToast('error', 'Erro de conexão. Tente novamente.');
+            })
+            .finally(() => {
+                // Reabilitar o dropdown
+                this.disabled = false;
+            });
+        });
+    });
+    
+    // Função para mostrar toast notifications
+    function showToast(type, message) {
+        // Criar elemento de toast
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+        toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        toast.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        // Adicionar ao body
+        document.body.appendChild(toast);
+        
+        // Remover automaticamente após 5 segundos
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.remove();
+            }
+        }, 5000);
+    }
+
+    // Funcionalidade de seleção múltipla
+    const selectAllCheckbox = document.getElementById('selectAll');
+    const studentCheckboxes = document.querySelectorAll('.student-checkbox');
+    const bulkActions = document.getElementById('bulkActions');
+    const selectedCount = document.getElementById('selectedCount');
+    const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+
+    // Função para atualizar contador e visibilidade dos botões
+    function updateBulkActions() {
+        const checkedBoxes = document.querySelectorAll('.student-checkbox:checked');
+        const count = checkedBoxes.length;
+        
+        console.log('updateBulkActions chamada - checkboxes selecionados:', count);
+        
+        // Atualizar contador
+        if (selectedCount) {
+            selectedCount.textContent = count;
+        }
+        
+        // Mostrar/esconder botões de ação em lote
+        if (bulkActions) {
+            if (count > 0) {
+                bulkActions.classList.remove('d-none');
+                console.log('Mostrando botão de deletar');
+            } else {
+                bulkActions.classList.add('d-none');
+                console.log('Escondendo botão de deletar');
+            }
+        }
+        
+        // Atualizar estado do checkbox "Selecionar Todos" da tabela
+        if (selectAllCheckbox) {
+            if (count === 0) {
+                selectAllCheckbox.indeterminate = false;
+                selectAllCheckbox.checked = false;
+            } else if (count === studentCheckboxes.length) {
+                selectAllCheckbox.indeterminate = false;
+                selectAllCheckbox.checked = true;
+            } else {
+                selectAllCheckbox.indeterminate = true;
+                selectAllCheckbox.checked = false;
+            }
+        }
+        
+        // Sincronizar com o checkbox visível
+        const selectAllVisible = document.getElementById('selectAllVisible');
+        if (selectAllVisible) {
+            if (count === 0) {
+                selectAllVisible.indeterminate = false;
+                selectAllVisible.checked = false;
+            } else if (count === studentCheckboxes.length) {
+                selectAllVisible.indeterminate = false;
+                selectAllVisible.checked = true;
+            } else {
+                selectAllVisible.indeterminate = true;
+                selectAllVisible.checked = false;
+            }
+        }
+    }
+
+    // Event listener para "Selecionar Todos"
+    selectAllCheckbox.addEventListener('change', function() {
+        const isChecked = this.checked;
+        studentCheckboxes.forEach(checkbox => {
+            checkbox.checked = isChecked;
+        });
+        updateBulkActions();
+        
+        // Sincronizar com o checkbox visível
+        const selectAllVisible = document.getElementById('selectAllVisible');
+        if (selectAllVisible) {
+            selectAllVisible.checked = isChecked;
+        }
+    });
+
+    // Event listeners para checkboxes individuais
+    studentCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateBulkActions);
+    });
+
+    // Event listener para botão de deletar selecionados
+    deleteSelectedBtn.addEventListener('click', function() {
+        const checkedBoxes = document.querySelectorAll('.student-checkbox:checked');
+        const studentIds = Array.from(checkedBoxes).map(cb => cb.value);
+        
+        if (studentIds.length === 0) {
+            showToast('error', 'Nenhum aluno selecionado');
+            return;
+        }
+
+        const confirmMessage = `Tem certeza que deseja deletar ${studentIds.length} aluno(s) selecionado(s)? Esta ação não pode ser desfeita.`;
+        
+        if (confirm(confirmMessage)) {
+            // Desabilitar botão durante a operação
+            deleteSelectedBtn.disabled = true;
+            deleteSelectedBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Deletando...';
+            
+            // Fazer requisição para deletar
+            fetch('/api/alunos/deletar-multiplos', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+                },
+                body: JSON.stringify({
+                    student_ids: studentIds
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('success', `${data.deleted_count} aluno(s) deletado(s) com sucesso`);
+                    // Recarregar a página para atualizar a lista
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    showToast('error', data.error || 'Erro ao deletar alunos');
+                    // Reabilitar botão
+                    deleteSelectedBtn.disabled = false;
+                    deleteSelectedBtn.innerHTML = '<i class="bi bi-trash me-1"></i>Deletar Selecionados (<span id="selectedCount">' + studentIds.length + '</span>)';
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                showToast('error', 'Erro de conexão. Tente novamente.');
+                // Reabilitar botão
+                deleteSelectedBtn.disabled = false;
+                deleteSelectedBtn.innerHTML = '<i class="bi bi-trash me-1"></i>Deletar Selecionados (<span id="selectedCount">' + studentIds.length + '</span>)';
+            });
+        }
+    });
+});
+
+// Função para o checkbox "Selecionar Todos" visível
+function toggleSelectAllVisible() {
+    const selectAllVisible = document.getElementById('selectAllVisible');
+    const studentCheckboxes = document.querySelectorAll('.student-checkbox');
+    const bulkActions = document.getElementById('bulkActions');
+    const selectedCount = document.getElementById('selectedCount');
+    
+    // Marcar/desmarcar todos os checkboxes dos alunos
+    const isChecked = selectAllVisible.checked;
+    studentCheckboxes.forEach(checkbox => {
+        checkbox.checked = isChecked;
+    });
+    
+    // Mostrar/esconder botão de deletar diretamente
+    if (isChecked && studentCheckboxes.length > 0) {
+        // Mostrar botão
+        bulkActions.classList.remove('d-none');
+        selectedCount.textContent = studentCheckboxes.length;
+    } else {
+        // Esconder botão
+        bulkActions.classList.add('d-none');
+        selectedCount.textContent = '0';
+    }
+    
+    // Sincronizar com checkbox da tabela
+    const selectAllCheckbox = document.getElementById('selectAll');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.checked = isChecked;
+    }
+}
+
+// Gerenciar mudanças de professor
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('teacher-dropdown')) {
+        const studentId = e.target.dataset.studentId;
+        const teacherId = e.target.value;
+        const currentTeacher = e.target.dataset.currentTeacher;
+        
+        // Mostrar loading
+        e.target.disabled = true;
+        
+        fetch('/update_student_teacher', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                student_id: studentId,
+                teacher_id: teacherId === '0' ? null : teacherId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Atualizar o data-current-teacher
+                e.target.dataset.currentTeacher = teacherId;
+                
+                // Mostrar mensagem de sucesso
+                showToast('Professor atualizado com sucesso!', 'success');
+            } else {
+                // Reverter a seleção
+                e.target.value = currentTeacher;
+                showToast('Erro ao atualizar professor: ' + data.error, 'error');
+            }
+        })
+        .catch(error => {
+            // Reverter a seleção
+            e.target.value = currentTeacher;
+            showToast('Erro de conexão ao atualizar professor', 'error');
+        })
+        .finally(() => {
+            e.target.disabled = false;
+        });
+    }
+});
+
+// Função para mostrar toast
+function showToast(message, type) {
+    // Criar toast se não existir
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+        toastContainer.style.zIndex = '9999';
+        document.body.appendChild(toastContainer);
+    }
+    
+    const toastId = 'toast-' + Date.now();
+    const bgClass = type === 'success' ? 'bg-success' : 'bg-danger';
+    
+    const toastHtml = `
+        <div id="${toastId}" class="toast ${bgClass} text-white" role="alert">
+            <div class="toast-body">
+                ${message}
+            </div>
+        </div>
+    `;
+    
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+    
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement, { delay: 3000 });
+    toast.show();
+    
+    // Remover toast após ser escondido
+    toastElement.addEventListener('hidden.bs.toast', function() {
+        toastElement.remove();
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,1111 @@
+{% extends "base.html" %}
+
+{% block title %}Editor de Certificado{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-3">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <a href="http://localhost:5000/alunos" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Voltar
+            </a>
+            <h2 class="text-center flex-grow-1">Editor de Certificado</h2>
+            <div style="width: 80px;"></div> <!-- Spacer for centering -->
+        </div>
+    </div>
+    
+    <!-- Controles no topo -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-cogs"></i> Controles</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Cores Personalizadas -->
+                        <div class="col-md-4">
+                            <h6>Cores:</h6>
+                            <div class="row">
+                                <div class="col-4">
+                                    <label for="nameColor" class="form-label">Nome:</label>
+                                    <input type="color" class="form-control form-control-color" id="nameColor">
+                                </div>
+                                <div class="col-4">
+                                    <label for="scoresColor" class="form-label">Pontuações:</label>
+                                    <input type="color" class="form-control form-control-color" id="scoresColor">
+                                </div>
+                                <div class="col-4">
+                                    <label for="dateColor" class="form-label">Data:</label>
+                                    <input type="color" class="form-control form-control-color" id="dateColor">
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <button class="btn btn-info btn-sm" id="saveColorsBtn">
+                                    <i class="fas fa-palette"></i> Salvar Cores
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Controles de Fonte -->
+                        <div class="col-md-3">
+                            <h6>Tamanho da Fonte:</h6>
+                            <div class="btn-group w-100" role="group">
+                                <button class="btn btn-outline-secondary btn-sm" id="decreaseFontBtn">
+                                    <i class="fas fa-minus"></i> A-
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm" id="resetFontBtn">
+                                    Reset
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm" id="increaseFontBtn">
+                                    <i class="fas fa-plus"></i> A+
+                                </button>
+                            </div>
+                            <small class="text-muted">Selecione um elemento e ajuste o tamanho</small>
+                        </div>
+
+                        <!-- Upload de Imagem -->
+                        <div class="col-md-3">
+                            <label for="customImageUpload" class="form-label">
+                                <i class="fas fa-image"></i> Imagem do Certificado
+                            </label>
+                            <input type="file" class="form-control" id="customImageUpload" accept="image/*">
+                            <small class="text-muted">Escolha uma imagem personalizada</small>
+                        </div>
+
+                        <!-- Botões de Ação -->
+                        <div class="col-md-2">
+                            <h6>Ações:</h6>
+                            <div class="d-grid gap-1">
+                                <button class="btn btn-success btn-sm" id="saveBtn">
+                                    <i class="fas fa-save"></i> Salvar
+                                </button>
+                                <button class="btn btn-secondary btn-sm" id="resetBtn">
+                                    <i class="fas fa-undo"></i> Reset
+                                </button>
+                                <button class="btn btn-warning btn-sm" id="saveAsDefaultBtn">
+                                    <i class="fas fa-star"></i> Padrão
+                                </button>
+                                <button class="btn btn-info btn-sm" id="loadDefaultBtn">
+                                    <i class="fas fa-download"></i> Carregar Padrão
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Área de Edição do Certificado -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-certificate"></i> Editor de Certificado</h5>
+                    <div class="btn-group" role="group">
+                        <button class="btn btn-outline-secondary btn-sm" id="zoomOut">
+                            <i class="fas fa-search-minus"></i>
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" id="zoomReset">100%</button>
+                        <button class="btn btn-outline-secondary btn-sm" id="zoomIn">
+                            <i class="fas fa-search-plus"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div id="certificateContainer" class="position-relative overflow-auto" style="height: 75vh; background: #f8f9fa; display: flex; align-items: center; justify-content: center;">
+                        <!-- Template do Certificado -->
+                        <div id="certificateCanvas" class="position-relative" style="width: 100%; max-width: 800px; aspect-ratio: 800/566; background: white; border: 1px solid #ddd; transform-origin: top left;">
+                            <!-- Imagem de Fundo do Certificado -->
+                            <img id="certificateBackground" src="{{ url_for('static', filename='templates/certificate_template.png') }}" 
+                                 alt="Certificate Template" 
+                                 class="position-absolute w-100 h-100" 
+                                 style="z-index: 1; object-fit: cover;">
+
+                            <!-- Elementos Editáveis -->
+                            <div id="studentName" class="draggable-element position-absolute" 
+                                 style="z-index: 10; cursor: move; border: 2px dashed transparent; padding: 5px; font-weight: bold;">
+                                [Nome do Estudante]
+                                <div class="element-controls position-absolute" style="top: -30px; right: 0; display: none;">
+                                    <button class="btn btn-sm btn-outline-primary resize-btn" data-action="font-size">
+                                        <i class="fas fa-text-height"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div id="listeningScore" class="draggable-element position-absolute" 
+                                 style="z-index: 10; cursor: move; border: 2px dashed transparent; padding: 5px;">
+                                [Listening Score]
+                            </div>
+
+                            <div id="readingScore" class="draggable-element position-absolute" 
+                                 style="z-index: 10; cursor: move; border: 2px dashed transparent; padding: 5px;">
+                                [Reading Score]
+                            </div>
+
+                            <div id="lfmScore" class="draggable-element position-absolute" 
+                                 style="z-index: 10; cursor: move; border: 2px dashed transparent; padding: 5px;">
+                                [LFM Score]
+                            </div>
+
+                            <div id="totalScore" class="draggable-element position-absolute" 
+                                 style="z-index: 10; cursor: move; border: 2px dashed transparent; padding: 5px;">
+                                [Total Score]
+                            </div>
+
+                            <div id="testDate" class="draggable-element position-absolute" 
+                                 style="z-index: 10; cursor: move; border: 2px dashed transparent; padding: 5px;">
+                                [Data do Teste]
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Lateral -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-eye"></i> Preview em Tempo Real</h5>
+                    <div class="btn-group" role="group">
+                        <button class="btn btn-outline-secondary btn-sm" id="sidePreviewDecrease">
+                            <i class="fas fa-search-minus"></i>
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" id="sidePreviewReset">100%</button>
+                        <button class="btn btn-outline-secondary btn-sm" id="sidePreviewIncrease">
+                            <i class="fas fa-search-plus"></i>
+                        </button>
+                        <button class="btn btn-primary btn-sm" id="sidePreviewDownload">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div id="sidePreviewContainer" class="position-relative overflow-auto" style="height: 75vh; background: #f8f9fa; display: flex; align-items: center; justify-content: center;">
+                        <div id="sidePreviewCanvas" class="position-relative" style="width: 800px; height: 566px; background: white; border: 1px solid #ddd; transform-origin: center center;">
+                            <img id="sidePreviewImage" src="" alt="Preview" class="w-100 h-100" style="object-fit: fill; display: block;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Informações de Posição -->
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h6>Posições Atuais:</h6>
+                    <div id="positionInfo" class="small text-muted">
+                        Selecione um elemento para ver sua posição
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.draggable-element {
+    transition: all 0.2s ease;
+}
+
+.draggable-element:hover {
+    border-color: #007bff !important;
+    background-color: rgba(0, 123, 255, 0.1);
+}
+
+.draggable-element.selected {
+    border-color: #28a745 !important;
+    background-color: rgba(40, 167, 69, 0.1);
+}
+
+.draggable-element:hover .element-controls {
+    display: block !important;
+}
+
+#certificateCanvas {
+    transition: transform 0.3s ease;
+}
+
+.zoom-50 { transform: scale(0.5); }
+.zoom-75 { transform: scale(0.75); }
+.zoom-100 { transform: scale(1); }
+.zoom-125 { transform: scale(1.25); }
+.zoom-150 { transform: scale(1.5); }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Variáveis globais
+let currentZoom = 100;
+let selectedElement = null;
+let isDragging = false;
+let dragOffset = { x: 0, y: 0 };
+let sidePreviewVisible = true;
+let sidePreviewScale = 1;
+
+// Obter student_id da URL se disponível
+const urlParams = new URLSearchParams(window.location.search);
+const currentStudentId = urlParams.get('student_id');
+
+// Variáveis globais para otimização
+let previewUpdateTimeout;
+let lastPreviewUpdate = 0;
+const PREVIEW_UPDATE_DELAY = 16; // 16ms = ~60fps para sincronização em tempo real
+
+// Função otimizada para gerar preview lateral com sincronização em tempo real
+function generateSidePreview() {
+    if (!sidePreviewVisible) return;
+    
+    // Implementar debounce ultra-rápido para sincronização em tempo real
+    const now = Date.now();
+    if (now - lastPreviewUpdate < 16) { // 16ms = ~60fps
+        clearTimeout(previewUpdateTimeout);
+        previewUpdateTimeout = setTimeout(() => {
+            generateSidePreviewImmediate();
+        }, PREVIEW_UPDATE_DELAY);
+        return;
+    }
+    
+    // Para drag em tempo real, executar imediatamente
+    if (isDragging) {
+        generateSidePreviewImmediate();
+        return;
+    }
+    
+    generateSidePreviewImmediate();
+}
+
+function generateSidePreviewImmediate() {
+    lastPreviewUpdate = Date.now();
+    
+    const positions = getCurrentPositions();
+    const colors = {
+        name_color: $('#nameColor').val(),
+        scores_color: $('#scoresColor').val(),
+        date_color: $('#dateColor').val()
+    };
+    
+    console.log('=== DEBUG POSIÇÕES ===');
+    console.log('Posições capturadas do editor:', positions);
+    console.log('Dimensões do canvas editor:', {
+        width: $('#certificateCanvas').width(),
+        height: $('#certificateCanvas').height()
+    });
+    console.log('Dimensões do container editor:', {
+        width: $('#certificateContainer').width(),
+        height: $('#certificateContainer').height()
+    });
+    
+    // Debug: verificar dimensões do canvas
+    const canvas = $('#certificateCanvas');
+    const canvasWidth = canvas.width();
+    const canvasHeight = canvas.height();
+    console.log(`DEBUG EDITOR: Canvas dimensions - width: ${canvasWidth}, height: ${canvasHeight}`);
+    
+    const requestData = {
+        positions: positions,
+        colors: colors
+    };
+    
+    if (currentStudentId) {
+        requestData.student_id = parseInt(currentStudentId);
+    }
+    
+    lastPreviewUpdate = Date.now();
+    
+    $.ajax({
+        url: '/api/certificate/preview',
+        method: 'POST',
+        contentType: 'application/json',
+        headers: {
+            'X-CSRFToken': $('meta[name=csrf-token]').attr('content')
+        },
+        data: JSON.stringify(requestData),
+        success: function(response) {
+            if (response.success) {
+                $('#sidePreviewImage').attr('src', 'data:image/png;base64,' + response.certificate);
+                updateSidePreviewScale();
+                console.log('Preview lateral atualizado com sucesso');
+            }
+        },
+        error: function() {
+            console.log('Erro ao gerar preview lateral');
+        }
+    });
+}
+
+function updateSidePreviewScale() {
+    const canvas = $('#sidePreviewCanvas');
+    const container = $('#sidePreviewContainer');
+    
+    if (canvas.length && container.length) {
+        const containerWidth = container.width();
+        const containerHeight = container.height();
+        const canvasWidth = 800;
+        const canvasHeight = 566;
+        
+        // Calcular escala para caber no container mantendo proporção
+        const scaleX = containerWidth / canvasWidth;
+        const scaleY = containerHeight / canvasHeight;
+        const scale = Math.min(scaleX, scaleY, 1) * sidePreviewScale;
+        
+        // Aplicar escala mantendo o centro
+        canvas.css({
+            'transform': `scale(${scale})`,
+            'transform-origin': 'center center'
+        });
+        
+        console.log(`Preview scale: ${scale} (container: ${containerWidth}x${containerHeight}, canvas: ${canvasWidth}x${canvasHeight})`);
+    }
+}
+
+// Inicialização
+$(document).ready(function() {
+    console.log('jQuery carregado:', typeof $ !== 'undefined');
+    console.log('Inicializando editor de certificado...');
+    initializeDragAndDrop();
+    setupEventListeners();
+    
+    // Carregar dados do estudante e layout
+    if (currentStudentId) {
+        loadStudentData(currentStudentId);
+        loadStudentLayout(currentStudentId);
+    } else {
+        loadDefaultLayout();
+    }
+});
+
+// Configurar event listeners
+function setupEventListeners() {
+    // Zoom controls
+    $('#zoomIn').on('click', function() { changeZoom(25); });
+    $('#zoomOut').on('click', function() { changeZoom(-25); });
+    $('#zoomReset').on('click', function() { setZoom(100); });
+    
+    // Color controls
+    $('#nameColor, #scoresColor, #dateColor').on('change', function() {
+        updateColors();
+        generateSidePreview(); // Atualizar também o preview lateral
+    });
+    
+    // Font size controls - CORRIGIDO para afetar também o preview
+    $('#increaseFontBtn').on('click', function() {
+        if (selectedElement) {
+            const currentSize = parseInt(selectedElement.css('font-size'));
+            const newSize = currentSize + 2;
+            selectedElement.css('font-size', newSize + 'px');
+            
+            // Atualizar preview imediatamente com o novo tamanho
+            updatePositionInfo();
+            generateSidePreview(); // Atualiza preview lateral
+            
+            console.log(`Fonte aumentada para ${newSize}px no elemento ${selectedElement.attr('id')}`);
+        } else {
+            alert('Selecione um elemento primeiro para ajustar o tamanho da fonte');
+        }
+    });
+    
+    $('#decreaseFontBtn').on('click', function() {
+        if (selectedElement) {
+            const currentSize = parseInt(selectedElement.css('font-size'));
+            if (currentSize > 8) {
+                const newSize = currentSize - 2;
+                selectedElement.css('font-size', newSize + 'px');
+                
+                // Atualizar preview imediatamente com o novo tamanho
+                updatePositionInfo();
+                generateSidePreview(); // Atualiza preview lateral
+                
+                console.log(`Fonte diminuída para ${newSize}px no elemento ${selectedElement.attr('id')}`);
+            } else {
+                alert('Tamanho mínimo da fonte é 8px');
+            }
+        } else {
+            alert('Selecione um elemento primeiro para ajustar o tamanho da fonte');
+        }
+    });
+    
+    $('#resetFontBtn').on('click', function() {
+        if (selectedElement) {
+            const elementId = selectedElement.attr('id');
+            const defaultSizes = {
+                'studentName': '24px',
+                'listeningScore': '16px',
+                'readingScore': '16px',
+                'lfmScore': '16px',
+                'totalScore': '20px',
+                'testDate': '14px'
+            };
+            const defaultSize = defaultSizes[elementId] || '16px';
+            selectedElement.css('font-size', defaultSize);
+            
+            // Atualizar preview imediatamente com o tamanho padrão
+            updatePositionInfo();
+            generateSidePreview(); // Atualiza preview lateral
+            
+            console.log(`Fonte resetada para ${defaultSize} no elemento ${elementId}`);
+        } else {
+            alert('Selecione um elemento primeiro para resetar o tamanho da fonte');
+        }
+    });
+    
+    // Action buttons
+    $('#saveBtn').on('click', savePositions);
+    $('#resetBtn').on('click', resetPositions);
+    $('#saveAsDefaultBtn').on('click', saveAsDefault);
+    $('#loadDefaultBtn').on('click', loadDefaultLayout);
+    $('#saveColorsBtn').on('click', saveColors);
+    
+    // Side preview controls
+    $('#sidePreviewIncrease').on('click', function() {
+        sidePreviewScale = Math.min(sidePreviewScale + 0.1, 2);
+        updateSidePreviewScale();
+    });
+    
+    $('#sidePreviewDecrease').on('click', function() {
+        sidePreviewScale = Math.max(sidePreviewScale - 0.1, 0.3);
+        updateSidePreviewScale();
+    });
+    
+    $('#sidePreviewReset').on('click', function() {
+        sidePreviewScale = 1;
+        updateSidePreviewScale();
+    });
+    
+    $('#sidePreviewDownload').on('click', downloadSidePreview);
+    
+    // Custom image upload
+    $('#customImageUpload').on('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                $('#certificateBackground').attr('src', e.target.result);
+                generateSidePreview();
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+    
+    // Keyboard controls for moving elements
+    $(document).on('keydown', function(e) {
+        console.log('Keydown detectado:', e.key, 'Elemento selecionado:', selectedElement ? selectedElement.attr('id') : 'nenhum');
+        
+        if (selectedElement && !$(e.target).is('input, textarea, select')) {
+            console.log('Processando movimento por teclado para:', selectedElement.attr('id'));
+            e.preventDefault();
+            
+            const step = e.shiftKey ? 10 : 1; // Shift + arrow = move 10px, arrow alone = move 1px
+            const position = selectedElement.position();
+            const container = $('#certificateCanvas');
+            const containerWidth = container.width();
+            const containerHeight = container.height();
+            const elementWidth = selectedElement.outerWidth();
+            const elementHeight = selectedElement.outerHeight();
+            
+            let newX = position.left;
+            let newY = position.top;
+            
+            console.log('Posição atual:', position, 'Container:', containerWidth, 'x', containerHeight);
+            
+            switch(e.key) {
+                case 'ArrowLeft':
+                    newX = Math.max(0, position.left - step);
+                    console.log('Movendo para esquerda:', newX);
+                    break;
+                case 'ArrowRight':
+                    newX = Math.min(containerWidth - elementWidth, position.left + step);
+                    console.log('Movendo para direita:', newX);
+                    break;
+                case 'ArrowUp':
+                    newY = Math.max(0, position.top - step);
+                    console.log('Movendo para cima:', newY);
+                    break;
+                case 'ArrowDown':
+                    newY = Math.min(containerHeight - elementHeight, position.top + step);
+                    console.log('Movendo para baixo:', newY);
+                    break;
+                default:
+                    console.log('Tecla não reconhecida para movimento');
+                    return; // Exit if not an arrow key
+            }
+            
+            selectedElement.css({
+                left: newX + 'px',
+                top: newY + 'px'
+            });
+            
+            console.log('Nova posição aplicada:', newX, newY);
+            updatePositionInfo();
+            generateSidePreview();
+        }
+    });
+}
+
+function updatePositionInfo() {
+    if (!selectedElement) return;
+    
+    const position = selectedElement.position();
+    const info = `
+        Elemento: ${selectedElement.attr('id')}<br>
+        X: ${Math.round(position.left)}px<br>
+        Y: ${Math.round(position.top)}px
+    `;
+    $('#positionInfo').html(info);
+}
+
+// Controle de zoom
+function changeZoom(delta) {
+    const newZoom = Math.max(25, Math.min(200, currentZoom + delta));
+    setZoom(newZoom);
+}
+
+function setZoom(zoom) {
+    currentZoom = zoom;
+    const canvas = $('#certificateCanvas');
+    canvas.css({
+        'transform': `scale(${zoom / 100})`,
+        'transform-origin': 'top left'
+    });
+    $('#zoomReset').text(`${zoom}%`);
+    console.log('Zoom aplicado:', zoom + '%');
+}
+
+// Atualizar cores
+function updateColors() {
+    const nameColor = $('#nameColor').val();
+    const scoresColor = $('#scoresColor').val();
+    const dateColor = $('#dateColor').val();
+    
+    console.log('Atualizando cores:', { nameColor, scoresColor, dateColor });
+    
+    // Atualizar cor do nome
+    const nameElement = $('#studentName');
+    if (nameElement.length) {
+        nameElement.css('color', nameColor);
+    }
+    
+    // Atualizar cor das pontuações
+    const scoreElements = $('#listeningScore, #readingScore, #lfmScore, #totalScore');
+    scoreElements.css('color', scoresColor);
+    
+    // Atualizar cor da data
+    const dateElement = $('#testDate');
+    if (dateElement.length) {
+        dateElement.css('color', dateColor);
+    }
+}
+
+// Gerar preview
+function generatePreview() {
+    // Usar as posições atuais do editor para o preview
+    const positions = getCurrentPositions();
+    const colors = {
+        name_color: $('#nameColor').val(),
+        scores_color: $('#scoresColor').val(),
+        date_color: $('#dateColor').val()
+    };
+    
+    console.log('Enviando posições para preview:', positions);
+    console.log('Enviando cores para preview:', colors);
+    
+    const requestData = {
+        positions: positions,
+        colors: colors
+    };
+    
+    // Usar student_id específico se disponível, senão usar ID padrão
+    if (currentStudentId) {
+        requestData.student_id = parseInt(currentStudentId);
+    } else {
+        requestData.student_id = 1;
+    }
+    
+    $.ajax({
+        url: '/api/certificate/preview',
+        method: 'POST',
+        contentType: 'application/json',
+        headers: {
+            'X-CSRFToken': $('meta[name=csrf-token]').attr('content')
+        },
+        data: JSON.stringify(requestData),
+        success: function(response) {
+            if (response.success) {
+                $('#previewImage').attr('src', 'data:image/png;base64,' + response.certificate);
+                $('#previewModal').modal('show');
+            } else {
+                alert('Erro ao gerar preview: ' + (response.error || 'Erro desconhecido'));
+            }
+        },
+        error: function(xhr, status, error) {
+            console.log('Erro na requisição:', { xhr, status, error });
+            alert('Erro ao gerar preview. Verifique o console para mais detalhes.');
+        }
+    });
+}
+
+// Salvar posições
+function savePositions() {
+    return new Promise((resolve, reject) => {
+        const positions = getCurrentPositions();
+        const colors = {
+            name_color: $('#nameColor').val(),
+            scores_color: $('#scoresColor').val(),
+            date_color: $('#dateColor').val()
+        };
+        
+        const requestData = {
+            positions: positions,
+            colors: colors
+        };
+        
+        if (currentStudentId) {
+            requestData.student_id = parseInt(currentStudentId);
+        }
+        
+        $.ajax({
+            url: '/api/certificate/save-positions',
+            method: 'POST',
+            contentType: 'application/json',
+            headers: {
+                'X-CSRFToken': $('meta[name=csrf-token]').attr('content')
+            },
+            data: JSON.stringify(requestData),
+            success: function(response) {
+                if (response.success) {
+                    alert('Posições salvas com sucesso!');
+                    resolve(getCurrentPositions()); // Fallback para posições atuais
+                } else {
+                    alert('Erro ao salvar posições: ' + (response.error || 'Erro desconhecido'));
+                    resolve(getCurrentPositions()); // Fallback para posições atuais
+                }
+            },
+            error: function(xhr, status, error) {
+                console.log('Erro ao salvar posições:', { xhr, status, error });
+                alert('Erro ao salvar posições. Verifique o console para mais detalhes.');
+                resolve(getCurrentPositions());
+            }
+        });
+    });
+}
+
+// Salvar cores
+function saveColors() {
+    const colors = {
+        name_color: $('#nameColor').val(),
+        scores_color: $('#scoresColor').val(),
+        date_color: $('#dateColor').val()
+    };
+    
+    const requestData = {
+        colors: colors
+    };
+    
+    if (currentStudentId) {
+        requestData.student_id = parseInt(currentStudentId);
+    }
+    
+    $.ajax({
+        url: '/api/certificate/save-colors',
+        method: 'POST',
+        contentType: 'application/json',
+        headers: {
+            'X-CSRFToken': $('meta[name=csrf-token]').attr('content')
+        },
+        data: JSON.stringify(requestData),
+        success: function(response) {
+            if (response.success) {
+                alert('Cores salvas com sucesso!');
+            } else {
+                alert('Erro ao salvar cores: ' + (response.error || 'Erro desconhecido'));
+            }
+        },
+        error: function(xhr, status, error) {
+            console.log('Erro ao salvar cores:', { xhr, status, error });
+            alert('Erro ao salvar cores. Verifique o console para mais detalhes.');
+        }
+    });
+}
+
+function getCurrentPositions() {
+        const positions = {};
+        
+        $('.draggable-element').each(function() {
+            const element = $(this);
+            const elementId = element.attr('id');
+            const elementPosition = element.position();
+            
+            // Usar posição direta do elemento (relativa ao canvas) e incluir tamanho da fonte
+            positions[elementId] = {
+                x: Math.round(elementPosition.left),
+                y: Math.round(elementPosition.top),
+                font_size: parseInt(element.css('font-size'))
+            };
+            
+            console.log(`DEBUG EDITOR: ${elementId} - x: ${Math.round(elementPosition.left)}, y: ${Math.round(elementPosition.top)}, font_size: ${parseInt(element.css('font-size'))}`);
+        });
+        
+        console.log('Posições atuais capturadas:', positions);
+        return positions;
+    }
+
+function getCurrentColors() {
+    return {
+        name_color: $('#nameColor').val(),
+        scores_color: $('#scoresColor').val(),
+        date_color: $('#dateColor').val()
+    };
+}
+
+// Resetar posições
+function resetPositions() {
+    if (confirm('Tem certeza que deseja resetar todas as posições?')) {
+        $('#studentName').css({ top: '200px', left: '300px' });
+        $('#listeningScore').css({ top: '300px', left: '200px' });
+        $('#readingScore').css({ top: '300px', left: '400px' });
+        $('#lfmScore').css({ top: '330px', left: '200px' });
+        $('#totalScore').css({ top: '330px', left: '400px' });
+        $('#testDate').css({ top: '450px', left: '300px' });
+        
+        updatePositionInfo();
+    }
+}
+
+// Salvar como layout padrão
+function saveAsDefault() {
+    if (confirm('Tem certeza que deseja salvar este layout como padrão para todos os certificados?')) {
+        const positions = getCurrentPositions();
+        const colors = getCurrentColors();
+        
+        $.ajax({
+            url: '/api/certificate/save-default-layout',
+            method: 'POST',
+            contentType: 'application/json',
+            headers: {
+                'X-CSRFToken': $('meta[name=csrf-token]').attr('content')
+            },
+            data: JSON.stringify({ 
+                positions: positions,
+                colors: colors
+            }),
+            success: function(response) {
+                if (response.success) {
+                    alert('Layout padrão salvo com sucesso! Este layout será usado para todos os novos certificados.');
+                } else {
+                    alert('Erro ao salvar layout padrão: ' + (response.error || 'Erro desconhecido'));
+                }
+            },
+            error: function(xhr, status, error) {
+                console.log('Erro ao salvar layout padrão:', { xhr, status, error });
+                alert('Erro ao salvar layout padrão. Verifique o console para mais detalhes.');
+            }
+        });
+    }
+}
+
+function loadDefaultLayout() {
+    $.ajax({
+        url: '/static/default_certificate_layout.json',
+        method: 'GET',
+        dataType: 'json',
+        success: function(data) {
+            console.log('Layout padrão carregado:', data);
+            
+            // Verificar se é o novo formato com posições e cores
+            let positions = data;
+            let colors = {};
+            
+            if (data.positions) {
+                positions = data.positions;
+                colors = data.colors || {};
+            }
+            
+            // Aplicar posições do layout padrão
+            Object.keys(positions).forEach(function(elementId) {
+                const position = positions[elementId];
+                const element = $('#' + elementId);
+                if (element.length > 0) {
+                    element.css({
+                        left: position.x + 'px',
+                        top: position.y + 'px'
+                    });
+                }
+            });
+            
+            // Aplicar cores do layout padrão
+            if (colors.name_color) {
+                $('#nameColor').val(colors.name_color);
+            }
+            if (colors.scores_color) {
+                $('#scoresColor').val(colors.scores_color);
+            }
+            if (colors.date_color) {
+                $('#dateColor').val(colors.date_color);
+            }
+            
+            updatePositionInfo();
+        },
+        error: function() {
+            console.log('Nenhum layout padrão encontrado, usando posições iniciais');
+        }
+    });
+}
+
+// Carregar dados reais do estudante
+function loadStudentData(studentId) {
+    console.log('Iniciando carregamento de dados para estudante ID:', studentId);
+    $.ajax({
+        url: `/api/students/${studentId}`,
+        method: 'GET',
+        dataType: 'json',
+        success: function(student) {
+            console.log('Resposta recebida da API:', student);
+            if (student) {
+                // Atualizar elementos do editor com dados reais
+                $('#studentName').text(student.name || 'Nome do Estudante');
+                $('#listeningScore').text(`Listening: ${student.listening || 0}`);
+                $('#readingScore').text(`Reading: ${student.reading || 0}`);
+                $('#lfmScore').text(`LFM: ${student.lfm || 0}`);
+                $('#totalScore').text(`Total: ${student.total || 0}`);
+                $('#testDate').text(student.test_date || new Date().toLocaleDateString('pt-BR'));
+                console.log('Dados do estudante carregados com sucesso:', student.name);
+            } else {
+                console.log('Resposta da API está vazia ou inválida');
+            }
+        },
+        error: function(xhr, status, error) {
+            console.log('Erro detalhado ao carregar dados do estudante:');
+            console.log('Status:', status);
+            console.log('Error:', error);
+            console.log('Response:', xhr.responseText);
+            console.log('Status Code:', xhr.status);
+            // Manter dados padrão se não conseguir carregar
+            $('#studentName').text('Nome do Estudante');
+            $('#listeningScore').text('Listening: 0');
+            $('#readingScore').text('Reading: 0');
+            $('#lfmScore').text('LFM: 0');
+            $('#totalScore').text('Total: 0');
+            $('#testDate').text(new Date().toLocaleDateString('pt-BR'));
+        }
+    });
+}
+
+// Carregar layout específico do estudante
+function loadStudentLayout(studentId) {
+    console.log('Iniciando carregamento de layout para estudante ID:', studentId);
+    // Primeiro tentar carregar layout específico do estudante
+    $.ajax({
+        url: `/api/certificate/load-positions?student_id=${studentId}`,
+        method: 'GET',
+        dataType: 'json',
+        success: function(response) {
+            console.log('Resposta do carregamento de posições:', response);
+            if (response.success && response.positions) {
+                console.log('Aplicando posições específicas do estudante');
+                // Aplicar posições específicas do estudante
+                Object.keys(response.positions).forEach(function(elementId) {
+                    const position = response.positions[elementId];
+                    const element = $('#' + elementId);
+                    if (element.length > 0) {
+                        element.css({
+                            left: position.x + 'px',
+                            top: position.y + 'px'
+                        });
+                    }
+                });
+                
+                // Aplicar cores salvas se existirem
+                if (response.colors) {
+                    console.log('Aplicando cores específicas do estudante:', response.colors);
+                    $('#nameColor').val(response.colors.name_color || '#000000');
+                    $('#scoresColor').val(response.colors.scores_color || '#000000');
+                    $('#dateColor').val(response.colors.date_color || '#000000');
+                    updateColors(); // Aplicar as cores aos elementos
+                }
+                
+                updatePositionInfo();
+                console.log('Layout específico do estudante carregado');
+            } else {
+                // Se não há layout específico, carregar padrão
+                loadDefaultLayout();
+            }
+        },
+        error: function(xhr, status, error) {
+            console.log('Erro detalhado ao carregar layout do estudante:');
+            console.log('Status:', status);
+            console.log('Error:', error);
+            console.log('Response:', xhr.responseText);
+            console.log('Status Code:', xhr.status);
+            // Se falhar, carregar layout padrão
+            loadDefaultLayout();
+        }
+    });
+}
+
+// Inicializar drag and drop
+function initializeDragAndDrop() {
+    console.log('Inicializando drag and drop...');
+    console.log('Elementos draggable encontrados:', $('.draggable-element').length);
+    
+    $('.draggable-element').each(function() {
+        const element = $(this);
+        console.log('Configurando elemento:', element.attr('id'));
+        
+        element.on('mousedown', function(e) {
+            console.log('Mousedown no elemento:', element.attr('id'));
+            e.preventDefault();
+            
+            // Selecionar elemento
+            $('.draggable-element').removeClass('selected');
+            element.addClass('selected');
+            selectedElement = element;
+            updatePositionInfo();
+            
+            // Iniciar drag
+            isDragging = true;
+            const container = $('#certificateCanvas');
+            const containerOffset = container.offset();
+            const elementPos = element.position();
+            
+            // Calcular offset correto baseado na posição do mouse relativa ao elemento
+            const mouseX = e.pageX - containerOffset.left;
+            const mouseY = e.pageY - containerOffset.top;
+            
+            dragOffset.x = mouseX - elementPos.left;
+            dragOffset.y = mouseY - elementPos.top;
+            
+            console.log('Iniciando drag - Posição elemento:', elementPos);
+            console.log('Mouse relativo ao container:', mouseX, mouseY);
+            console.log('Offset calculado:', dragOffset);
+            
+            $(document).on('mousemove.drag', function(e) {
+                if (isDragging) {
+                    const container = $('#certificateCanvas');
+                    const containerOffset = container.offset();
+                    
+                    // Calcular nova posição baseada no mouse atual menos o offset
+                    const mouseX = e.pageX - containerOffset.left;
+                    const mouseY = e.pageY - containerOffset.top;
+                    
+                    let newX = mouseX - dragOffset.x;
+                    let newY = mouseY - dragOffset.y;
+                    
+                    // Limitar dentro do canvas
+                    const containerWidth = container.width();
+                    const containerHeight = container.height();
+                    const elementWidth = element.outerWidth();
+                    const elementHeight = element.outerHeight();
+                    
+                    newX = Math.max(0, Math.min(newX, containerWidth - elementWidth));
+                    newY = Math.max(0, Math.min(newY, containerHeight - elementHeight));
+                    
+                    console.log('Movendo para:', newX, newY);
+                    
+                    element.css({
+                        left: newX + 'px',
+                        top: newY + 'px'
+                    });
+                    
+                    updatePositionInfo();
+                    generateSidePreview();
+                }
+            });
+            
+            $(document).on('mouseup.drag', function() {
+                console.log('Mouseup - finalizando drag');
+                isDragging = false;
+                $(document).off('mousemove.drag mouseup.drag');
+            });
+        });
+    });
+    
+    // Deselect when clicking outside
+    $('#certificateCanvas').on('click', function(e) {
+        if (e.target === this) {
+            $('.draggable-element').removeClass('selected');
+            selectedElement = null;
+            $('#positionInfo').html('Selecione um elemento para ver sua posição');
+        }
+    });
+    
+    console.log('Drag and drop inicializado com sucesso');
+}
+
+// Download do preview lateral
+function downloadSidePreview() {
+    const positions = getCurrentPositions();
+    const colors = {
+        name_color: $('#nameColor').val(),
+        scores_color: $('#scoresColor').val(),
+        date_color: $('#dateColor').val()
+    };
+    
+    const requestData = {
+        positions: positions,
+        colors: colors
+    };
+    
+    if (currentStudentId) {
+        requestData.student_id = parseInt(currentStudentId);
+    } else {
+        requestData.student_id = 1;
+    }
+    
+    $.ajax({
+        url: '/api/certificate/download',
+        method: 'POST',
+        contentType: 'application/json',
+        headers: {
+            'X-CSRFToken': $('meta[name=csrf-token]').attr('content')
+        },
+        data: JSON.stringify(requestData),
+        xhrFields: {
+            responseType: 'blob'
+        },
+        success: function(blob) {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            
+            // Nome do arquivo baseado no estudante
+            let filename = 'certificado';
+            if (currentStudentId) {
+                const studentName = $('#studentName').text().replace(/[^a-zA-Z0-9]/g, '_');
+                filename = `certificado_${studentName}_${currentStudentId}`;
+            }
+            filename += '.png';
+            
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        },
+        error: function(xhr, status, error) {
+            console.log('Erro ao fazer download:', { xhr, status, error });
+            alert('Erro ao fazer download do certificado.');
+        }
+    });
+}
+
+// Gerar preview inicial quando a página carregar
+$(document).ready(function() {
+    // Aguardar um pouco para garantir que tudo foi carregado
+    setTimeout(function() {
+        generateSidePreview();
+    }, 1000);
+    
+    // Também gerar quando a janela for redimensionada
+    $(window).on('resize', function() {
+        setTimeout(generateSidePreview, 100);
+    });
+});
+</script>
+{% endblock %}

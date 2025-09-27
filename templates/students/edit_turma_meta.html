@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Alterar Rótulo Escolar - {{ student.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <div class="d-flex align-items-center">
+        <div class="avatar-lg bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3">
+            {{ student.name[0].upper() }}
+        </div>
+        <div>
+            <h1 class="h2 mb-0">Alterar Rótulo Escolar</h1>
+            <p class="text-muted mb-0">
+                <i class="bi bi-person me-1"></i>{{ student.name }}
+                <span class="mx-2">•</span>
+                <i class="bi bi-hash me-1"></i>{{ student.student_number }}
+            </p>
+        </div>
+    </div>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{{ url_for('student_detail', id=student.id) }}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Voltar ao Perfil
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-tags me-2"></i>Alterar Rótulo Escolar do Aluno
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- Informações atuais -->
+                <div class="alert alert-info">
+                    <h6 class="alert-heading">
+                        <i class="bi bi-info-circle me-1"></i>Rótulo Atual
+                    </h6>
+                    <p class="mb-2">
+                        <strong>{{ student.turma_meta or 'Não definido' }}</strong>
+                    </p>
+                    <div class="alert alert-warning mb-0">
+                        <small>
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            <strong>Importante:</strong> Alterar o rótulo escolar recalculará automaticamente a nota de Listening, 
+                            pois diferentes rótulos têm critérios de avaliação diferentes.
+                        </small>
+                    </div>
+                </div>
+
+                <!-- Formulário -->
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.turma_meta.label(class="form-label") }}
+                        
+                        <!-- DEBUG: Mostrar as choices disponíveis -->
+                        <div class="alert alert-info">
+                            <strong>DEBUG - Choices disponíveis:</strong><br>
+                            {% for value, label in form.turma_meta.choices %}
+                                {{ value }}: {{ label }}<br>
+                            {% endfor %}
+                            <strong>Total de opções:</strong> {{ form.turma_meta.choices|length }}
+                        </div>
+                        
+                        {{ form.turma_meta(class="form-select") }}
+                        {% if form.turma_meta.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.turma_meta.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">
+                            Selecione o novo rótulo escolar. As métricas do estudante serão recalculadas automaticamente.
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('student_detail', id=student.id) }}" class="btn btn-secondary me-md-2">
+                            <i class="bi bi-x-circle me-1"></i>Cancelar
+                        </a>
+                        {{ form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Informações sobre os rótulos -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-info-circle me-2"></i>Sobre os Rótulos Escolares
+                </h6>
+            </div>
+            <div class="card-body">
+                {% set class_name = student.class_info.name.lower() if student.class_info and student.class_info.name else '' %}
+                {% set is_6th_grade = '6' in class_name and ('ano' in class_name or '°' in class_name or 'sexto' in class_name) %}
+                {% set is_9th_grade = '9' in class_name and ('ano' in class_name or '°' in class_name or 'nono' in class_name) %}
+                
+                {% if is_6th_grade %}
+                    <!-- Mostrar apenas rótulos de 6º ano -->
+                    <div class="row">
+                        <div class="col-12">
+                            <h6 class="text-primary">6º Ano - Rótulos Disponíveis</h6>
+                            <ul class="list-unstyled">
+                                <li><span class="badge bg-outline-secondary me-2">6.1</span>Básico</li>
+                                <li><span class="badge bg-outline-info me-2">6.2</span>Intermediário</li>
+                                <li><span class="badge bg-outline-warning me-2">6.3</span>Avançado</li>
+                            </ul>
+                        </div>
+                    </div>
+                {% elif is_9th_grade %}
+                    <!-- Mostrar apenas rótulos de 9º ano -->
+                    <div class="row">
+                        <div class="col-12">
+                            <h6 class="text-success">9º Ano - Rótulos Disponíveis</h6>
+                            <ul class="list-unstyled">
+                                <li><span class="badge bg-outline-primary me-2">9.1</span>Básico</li>
+                                <li><span class="badge bg-outline-success me-2">9.2</span>Intermediário</li>
+                                <li><span class="badge bg-outline-success me-2">9.3</span>Avançado</li>
+                            </ul>
+                        </div>
+                    </div>
+                {% else %}
+                    <!-- Mostrar todos os rótulos (fallback) -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-primary">6º Ano</h6>
+                            <ul class="list-unstyled">
+                                <li><span class="badge bg-outline-secondary me-2">6.1</span>Básico</li>
+                                <li><span class="badge bg-outline-info me-2">6.2</span>Intermediário</li>
+                                <li><span class="badge bg-outline-warning me-2">6.3</span>Avançado</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-success">9º Ano</h6>
+                            <ul class="list-unstyled">
+                                <li><span class="badge bg-outline-primary me-2">9.1</span>Básico</li>
+                                <li><span class="badge bg-outline-success me-2">9.2</span>Intermediário</li>
+                                <li><span class="badge bg-outline-success me-2">9.3</span>Avançado</li>
+                            </ul>
+                        </div>
+                    </div>
+                {% endif %}
+                
+                <div class="alert alert-light mt-3">
+                    <small class="text-muted">
+                        <i class="bi bi-lightbulb me-1"></i>
+                        {% if is_6th_grade %}
+                            Os rótulos disponíveis foram filtrados para turmas de 6º ano. Cada rótulo tem critérios específicos de avaliação.
+                        {% elif is_9th_grade %}
+                            Os rótulos disponíveis foram filtrados para turmas de 9º ano. Cada rótulo tem critérios específicos de avaliação.
+                        {% else %}
+                            Cada rótulo tem critérios específicos de avaliação. Rótulos mais avançados (6.3, 9.3) 
+                            têm critérios mais rigorosos, resultando em notas diferentes para o mesmo score.
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
