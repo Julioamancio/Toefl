@@ -1,20 +1,102 @@
 #!/usr/bin/env python3
 """
 Script para ser executado automaticamente no deploy do Render
-Integra com o processo de inicialização para corrigir asteriscos
+Integra com o processo de inicialização para corrigir asteriscos e migrar schema
 """
 
 import os
 import sys
 from datetime import datetime
+from sqlalchemy import create_engine, text, inspect
+from sqlalchemy.exc import SQLAlchemyError
+import logging
 
 # Adicionar o diretório atual ao path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def migrate_user_schema():
+    """Migrate the users table to add missing columns"""
+    try:
+        logger.info("🔧 SCHEMA-FIX: Starting user schema migration...")
+        
+        # Get database URL from environment
+        database_url = os.environ.get('DATABASE_URL')
+        if not database_url:
+            logger.error("DATABASE_URL environment variable not found")
+            return False
+        
+        # Create engine
+        engine = create_engine(database_url)
+        
+        # Check if users table exists
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        
+        if 'users' not in tables:
+            logger.error("Users table does not exist!")
+            return False
+        
+        # List of columns that should exist in the users table
+        required_columns = [
+            ('is_teacher', 'BOOLEAN DEFAULT FALSE'),
+            ('is_active', 'BOOLEAN DEFAULT TRUE'),
+            ('created_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'),
+            ('last_login', 'TIMESTAMP NULL')
+        ]
+        
+        with engine.connect() as conn:
+            # Start transaction
+            trans = conn.begin()
+            
+            try:
+                for column_name, column_definition in required_columns:
+                    # Check if column exists
+                    columns = inspector.get_columns('users')
+                    existing_columns = [col['name'] for col in columns]
+                    
+                    if column_name not in existing_columns:
+                        logger.info(f"🔧 SCHEMA-FIX: Adding column {column_name} to users table...")
+                        
+                        # Add the column
+                        sql = f"ALTER TABLE users ADD COLUMN {column_name} {column_definition}"
+                        conn.execute(text(sql))
+                        
+                        logger.info(f"✅ SCHEMA-FIX: Successfully added column {column_name}")
+                    else:
+                        logger.info(f"✅ SCHEMA-FIX: Column {column_name} already exists, skipping...")
+                
+                # Commit transaction
+                trans.commit()
+                logger.info("✅ SCHEMA-FIX: User schema migration completed successfully!")
+                return True
+                
+            except Exception as e:
+                # Rollback on error
+                trans.rollback()
+                logger.error(f"❌ SCHEMA-FIX: Error during migration, rolling back: {e}")
+                return False
+                
+    except SQLAlchemyError as e:
+        logger.error(f"❌ SCHEMA-FIX: Database connection error: {e}")
+        return False
+    except Exception as e:
+        logger.error(f"❌ SCHEMA-FIX: Unexpected error: {e}")
+        return False
 
 def auto_fix_on_deploy():
     """Executa correção automática durante o deploy"""
     try:
         print("🔧 AUTO-FIX: Verificando e corrigindo asteriscos durante deploy...")
+        
+        # PRIMEIRO: Migrar schema do usuário se necessário
+        print("🔧 AUTO-FIX: Verificando schema da tabela users...")
+        schema_success = migrate_user_schema()
+        if not schema_success:
+            print("⚠️  AUTO-FIX: Schema migration falhou, mas continuando com correção de asteriscos...")
         
         # Forçar ambiente de produção
         os.environ['FLASK_ENV'] = 'production'
@@ -105,6 +187,18 @@ if __name__ == '__main__':
     print("🚀 RENDER AUTO-FIX DEPLOY")
     print("="*40)
     
+    # First run schema migration
+    print("🔧 SCHEMA-FIX: Running database schema migration...")
+    schema_success = migrate_user_schema()
+    
+    if schema_success:
+        print("✅ SCHEMA-FIX: Schema migration completed successfully!")
+    else:
+        print("⚠️  SCHEMA-FIX: Schema migration had issues, but continuing...")
+    
+    print("-"*40)
+    
+    # Then run asterisk fixes
     success = auto_fix_on_deploy()
     
     if success:
