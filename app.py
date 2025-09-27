@@ -1730,13 +1730,9 @@ def api_change_student_school_label(id):
         if new_label not in valid_labels:
             return jsonify({'success': False, 'error': 'Rótulo escolar inválido'}), 400
         
-        # Verificar se o estudante tem uma turma
-        if not student.class_info:
-            return jsonify({'success': False, 'error': 'Estudante não possui turma associada'}), 400
-        
-        # Atualizar o rótulo escolar na turma
-        old_label = student.class_info.meta_label
-        student.class_info.meta_label = new_label if new_label else None
+        # CORREÇÃO: Atualizar o rótulo escolar INDIVIDUAL do aluno, não da turma
+        old_label = student.turma_meta
+        student.turma_meta = new_label if new_label else None
         student.updated_at = datetime.utcnow()
         
         db.session.commit()
@@ -1758,7 +1754,7 @@ def api_change_student_school_label(id):
             'updated_data': {
                 'listening': student.listening,
                 'list_cefr': student.list_cefr,
-                'class_meta_label': student.class_info.meta_label if student.class_info else None
+                'turma_meta': student.turma_meta
             }
         })
         

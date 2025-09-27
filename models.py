@@ -82,6 +82,9 @@ class Student(db.Model):
     # Campo para Listening CSA
     listening_csa_points = db.Column(db.Float, nullable=True)
     
+    # Campo individual para rótulo escolar (turma meta) - cada aluno tem seu próprio
+    turma_meta = db.Column(db.String(10), nullable=True)  # "6.1", "6.2", "6.3", "9.1", "9.2", "9.3"
+    
     # Relacionamentos
     class_id = db.Column(db.Integer, db.ForeignKey('classes.id'), nullable=True)
     teacher_id = db.Column(db.Integer, db.ForeignKey('teachers.id'), nullable=True)
@@ -169,13 +172,31 @@ class Student(db.Model):
             self.listening_csa_points = None
     
     def compute_listening_csa(self):
-        """Computa e retorna dados do Listening CSA"""
-        if self.class_info and self.class_info.meta_label and self.listening is not None:
-            from listening_csa import compute_listening_csa
+        """Calcula o Listening CSA baseado no rótulo escolar individual e nota de listening"""
+        if self.turma_meta and self.listening is not None:
             try:
-                rotulo_escolar = float(self.class_info.meta_label)
+                # Usar o rótulo escolar individual do aluno
+                rotulo_escolar = float(self.turma_meta)
+                
+                # Importar a função de cálculo
+                from toefl_calculator import compute_listening_csa
                 return compute_listening_csa(rotulo_escolar, self.listening)
-            except (ValueError, TypeError):
+            except (ValueError, ImportError):
+                return None
+        return None
+    
+    def get_listening_csa_points(self):
+        """Retorna apenas os pontos do Listening CSA"""
+        if self.turma_meta and self.listening is not None:
+            try:
+                # Usar o rótulo escolar individual do aluno
+                rotulo_escolar = float(self.turma_meta)
+                
+                # Importar a função de cálculo
+                from toefl_calculator import compute_listening_csa
+                result = compute_listening_csa(rotulo_escolar, self.listening)
+                return result.points if result else None
+            except (ValueError, ImportError):
                 return None
         return None
     

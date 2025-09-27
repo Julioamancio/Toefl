@@ -67,7 +67,7 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <h3 class="mb-1">{{ student.class_info.meta_label if student.class_info else 'N/A' }}</h3>
+                        <h3 class="mb-1">{{ student.turma_meta or 'N/A' }}</h3>
                         <p class="mb-0">Rótulo Escolar</p>
                     </div>
                     <div class="align-self-center">
@@ -104,8 +104,8 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <h3 class="mb-1">{{ student.class_info.meta_label if student.class_info else 'N/A' }}</h3>
-                        <p class="mb-0">Meta da Turma</p>
+                        <h3 class="mb-1">{{ student.turma_meta or 'N/A' }}</h3>
+                        <p class="mb-0">Rótulo Escolar Individual</p>
                     </div>
                     <div class="align-self-center">
                         <i class="bi bi-target" style="font-size: 2rem;"></i>
