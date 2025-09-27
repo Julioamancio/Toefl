@@ -18,6 +18,12 @@ def drop_and_recreate_tables():
             print("❌ [BUILD] DATABASE_URL não encontrada!")
             return False
             
+        # Corrigir URL para usar psycopg3 em vez de psycopg2
+        if database_url.startswith('postgresql://'):
+            database_url = database_url.replace('postgresql://', 'postgresql+psycopg://', 1)
+        elif database_url.startswith('postgres://'):
+            database_url = database_url.replace('postgres://', 'postgresql+psycopg://', 1)
+            
         print(f"🔗 [BUILD] Conectando ao banco: {database_url[:50]}...")
         
         # Conectar ao banco
