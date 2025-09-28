@@ -67,6 +67,50 @@
         font-size: 3rem;
         margin-bottom: 1rem;
     }
+    
+    .password-toggle {
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: #6c757d;
+        cursor: pointer;
+        z-index: 10;
+    }
+    
+    .password-toggle:hover {
+        color: #495057;
+    }
+    
+    .password-field {
+        position: relative;
+    }
+    
+    .login-footer {
+        background: #f8f9fa;
+        padding: 2rem;
+        text-align: center;
+        border-top: 1px solid #e9ecef;
+    }
+    
+    .login-footer img {
+        max-width: 120px;
+        margin-bottom: 1rem;
+        opacity: 0.8;
+    }
+    
+    .login-footer .copyright {
+        font-size: 0.875rem;
+        color: #6c757d;
+        margin-bottom: 0.5rem;
+    }
+    
+    .login-footer .credits {
+        font-size: 0.8rem;
+        color: #adb5bd;
+    }
 </style>
 {% endblock %}
 
@@ -77,7 +121,7 @@
             <div class="toefl-icon">
                 <i class="bi bi-mortarboard-fill"></i>
             </div>
-            <h2 class="mb-0">TOEFL Dashboard</h2>
+            <h2 class="mb-0">TOEFL Reports</h2>
             <p class="mb-0 opacity-75">Sistema de Gestão de Resultados</p>
         </div>
         
@@ -99,7 +143,12 @@
                 
                 <div class="mb-3">
                     {{ form.password.label(class="form-label fw-bold") }}
-                    {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), placeholder="Digite sua senha") }}
+                    <div class="password-field">
+                        {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), placeholder="Digite sua senha", id="passwordField") }}
+                        <button type="button" class="password-toggle" onclick="togglePassword()">
+                            <i class="bi bi-eye" id="toggleIcon"></i>
+                        </button>
+                    </div>
                     {% if form.password.errors %}
                         <div class="invalid-feedback">
                             {% for error in form.password.errors %}
@@ -128,6 +177,27 @@
                 </small>
             </div>
         </div>
+        
+        <div class="login-footer">
+            <img src="https://www.colegiosantoantonio.com.br/wp-content/uploads/2019/06/nova-logo-colegio-santo-antonio-logotipo.png" alt="Colégio Santo Antônio" class="img-fluid">
+            <div class="copyright">Copyright © 2025 - Todos os direitos reservados.</div>
+            <div class="credits">Feito por Júlio Amâncio</div>
+        </div>
     </div>
 </div>
+
+<script>
+function togglePassword() {
+    const passwordField = document.getElementById('passwordField');
+    const toggleIcon = document.getElementById('toggleIcon');
+    
+    if (passwordField.type === 'password') {
+        passwordField.type = 'text';
+        toggleIcon.className = 'bi bi-eye-slash';
+    } else {
+        passwordField.type = 'password';
+        toggleIcon.className = 'bi bi-eye';
+    }
+}
+</script>
 {% endblock %}

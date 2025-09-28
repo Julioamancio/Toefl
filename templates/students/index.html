@@ -20,7 +20,7 @@
 <!-- Filtros e Busca -->
 <div class="card shadow mb-4">
     <div class="card-body">
-        <form method="GET" class="row g-3" id="filterForm">
+        <form method="GET" class="row g-3" id="filterForm" action="{{ url_for('students') }}">
             <div class="col-md-3">
                 <label for="search" class="form-label">Buscar por nome(s)</label>
                 <div class="input-group">
@@ -42,38 +42,60 @@ Pedro; Ana">{{ request.args.get('search', '') }}</textarea>
             </div>
             <div class="col-md-2">
                 <label for="class_filter" class="form-label">Filtrar por turma</label>
-                <select class="form-select" id="class_filter" name="class_filter">
-                    <option value="">Todas as turmas</option>
-                    {% for class in classes %}
-                        <option value="{{ class.id }}" 
-                                {{ 'selected' if request.args.get('class_filter') == class.id|string or class_filter == class.id else '' }}>
-                            {{ class.name }}
-                        </option>
-                    {% endfor %}
-                </select>
+                <div class="position-relative">
+                    <select class="form-select" id="class_filter" name="class_filter">
+                        <option value="">Todas as turmas</option>
+                        {% for class in classes %}
+                            <option value="{{ class.id }}" 
+                                    {{ 'selected' if request.args.get('class_filter') == class.id|string or class_filter == class.id else '' }}>
+                                {{ class.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    {% if request.args.get('class_filter') %}
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary">
+                            <i class="bi bi-funnel-fill"></i>
+                        </span>
+                    {% endif %}
+                </div>
             </div>
             <div class="col-md-2">
                 <label for="teacher_filter" class="form-label">Filtrar por professor</label>
-                <select class="form-select" id="teacher_filter" name="teacher_filter">
-                    <option value="">Todos os professores</option>
-                    {% for teacher in teachers %}
-                        <option value="{{ teacher.id }}" 
-                                {{ 'selected' if request.args.get('teacher_filter') == teacher.id|string else '' }}>
-                            {{ teacher.name }}
-                        </option>
-                    {% endfor %}
-                </select>
+                <div class="position-relative">
+                    <select class="form-select" id="teacher_filter" name="teacher_filter">
+                        <option value="">Todos os professores</option>
+                        {% for teacher in teachers %}
+                            <option value="{{ teacher.id }}" 
+                                    {{ 'selected' if request.args.get('teacher_filter') == teacher.id|string or teacher_filter == teacher.id else '' }}>
+                                {{ teacher.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    {% if request.args.get('teacher_filter') %}
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary">
+                            <i class="bi bi-funnel-fill"></i>
+                        </span>
+                    {% endif %}
+                </div>
             </div>
             <div class="col-md-3">
                 <label for="cefr_filter" class="form-label">Filtrar por nível CEFR</label>
-                <select class="form-select" id="cefr_filter" name="cefr_filter">
-                    <option value="">Todos os níveis</option>
-                    <option value="B2" {{ 'selected' if request.args.get('cefr_filter') == 'B2' else '' }}>B2</option>
-                    <option value="B1" {{ 'selected' if request.args.get('cefr_filter') == 'B1' else '' }}>B1</option>
-                    <option value="A2" {{ 'selected' if request.args.get('cefr_filter') == 'A2' else '' }}>A2</option>
-                    <option value="A1" {{ 'selected' if request.args.get('cefr_filter') == 'A1' else '' }}>A1</option>
-                    <option value="Below A1" {{ 'selected' if request.args.get('cefr_filter') == 'Below A1' else '' }}>Below A1</option>
-                </select>
+                <div class="position-relative">
+                    <select class="form-select" id="cefr_filter" name="cefr_filter">
+                        <option value="">Todos os níveis</option>
+                        <option value="B2" {{ 'selected' if request.args.get('cefr_filter') == 'B2' or cefr_filter == 'B2' else '' }}>B2</option>
+                        <option value="B1" {{ 'selected' if request.args.get('cefr_filter') == 'B1' or cefr_filter == 'B1' else '' }}>B1</option>
+                        <option value="A2+" {{ 'selected' if request.args.get('cefr_filter') == 'A2+' or cefr_filter == 'A2+' else '' }}>A2+</option>
+                        <option value="A2" {{ 'selected' if request.args.get('cefr_filter') == 'A2' or cefr_filter == 'A2' else '' }}>A2</option>
+                        <option value="A1" {{ 'selected' if request.args.get('cefr_filter') == 'A1' or cefr_filter == 'A1' else '' }}>A1</option>
+                        <option value="Below A1" {{ 'selected' if request.args.get('cefr_filter') == 'Below A1' or cefr_filter == 'Below A1' else '' }}>Below A1</option>
+                    </select>
+                    {% if request.args.get('cefr_filter') %}
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary">
+                            <i class="bi bi-funnel-fill"></i>
+                        </span>
+                    {% endif %}
+                </div>
             </div>
             <div class="col-md-2">
                 <label class="form-label">&nbsp;</label>
@@ -96,6 +118,45 @@ Pedro; Ana">{{ request.args.get('search', '') }}</textarea>
                 </div>
             </div>
         </form>
+        
+        <!-- Indicadores de Filtros Ativos -->
+        {% set active_filters = [] %}
+        {% if request.args.get('search') %}
+            {% set _ = active_filters.append(('Busca', request.args.get('search'))) %}
+        {% endif %}
+        {% if request.args.get('class_filter') %}
+            {% for class in classes %}
+                {% if class.id|string == request.args.get('class_filter') %}
+                    {% set _ = active_filters.append(('Turma', class.name)) %}
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+        {% if request.args.get('teacher_filter') %}
+            {% for teacher in teachers %}
+                {% if teacher.id|string == request.args.get('teacher_filter') %}
+                    {% set _ = active_filters.append(('Professor', teacher.name)) %}
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+        {% if request.args.get('cefr_filter') %}
+            {% set _ = active_filters.append(('Nível CEFR', request.args.get('cefr_filter'))) %}
+        {% endif %}
+        
+        {% if active_filters %}
+            <div class="mt-3">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <span class="text-muted fw-bold">Filtros ativos:</span>
+                    {% for filter_type, filter_value in active_filters %}
+                        <span class="badge bg-primary fs-6">
+                            <i class="bi bi-funnel-fill me-1"></i>{{ filter_type }}: {{ filter_value }}
+                        </span>
+                    {% endfor %}
+                    <a href="{{ url_for('students') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-x-circle me-1"></i>Limpar todos os filtros
+                    </a>
+                </div>
+            </div>
+        {% endif %}
     </div>
 </div>
 
@@ -122,7 +183,16 @@ Pedro; Ana">{{ request.args.get('search', '') }}</textarea>
                 <div class="d-flex justify-content-between">
                     <div>
                         <h4 class="mb-0">{{ stats.avg_total|round(1) if stats.avg_total else 0 }}</h4>
-                        <p class="mb-0">Média Geral</p>
+                        <p class="mb-0">
+                            {% if stats.has_filters %}
+                                Média (Filtrada)
+                            {% else %}
+                                Média Geral
+                            {% endif %}
+                        </p>
+                        {% if stats.has_filters and stats.avg_total_general != stats.avg_total_filtered %}
+                            <small class="text-light opacity-75">Geral: {{ stats.avg_total_general|round(1) }}</small>
+                        {% endif %}
                     </div>
                     <div class="align-self-center">
                         <i class="bi bi-graph-up" style="font-size: 2rem;"></i>
@@ -137,7 +207,16 @@ Pedro; Ana">{{ request.args.get('search', '') }}</textarea>
                 <div class="d-flex justify-content-between">
                     <div>
                         <h4 class="mb-0">{{ stats.predominant_cefr or 'N/A' }}</h4>
-                        <p class="mb-0">Nível Predominante</p>
+                        <p class="mb-0">
+                            {% if stats.has_filters %}
+                                Nível Predominante (Filtrado)
+                            {% else %}
+                                Nível Predominante Geral
+                            {% endif %}
+                        </p>
+                        {% if stats.has_filters and stats.predominant_cefr_general != stats.predominant_cefr_filtered %}
+                            <small class="text-light opacity-75">Geral: {{ stats.predominant_cefr_general }}</small>
+                        {% endif %}
                     </div>
                     <div class="align-self-center">
                         <i class="bi bi-award" style="font-size: 2rem;"></i>

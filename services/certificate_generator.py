@@ -155,88 +155,94 @@ class CertificateGenerator:
     def _get_coordinates(self, custom_colors=None):
         """
         Define as coordenadas dos campos no certificado
-        EXIGE cores personalizadas - não há mais cores padrão
         
         Args:
-            custom_colors (dict): Cores personalizadas OBRIGATÓRIAS para os campos
+            custom_colors (dict): Cores personalizadas para os campos (opcional)
                 Formato: {
                     'student_name': (r, g, b) ou 'nome_cor' ou '#hex',
                     'scores': (r, g, b) ou 'nome_cor' ou '#hex',
                     'date': (r, g, b) ou 'nome_cor' ou '#hex'
                 }
         """
-        # EXIGIR cores personalizadas
-        if not custom_colors:
-            raise ValueError("Cores não fornecidas. Configure no editor primeiro.")
+        # Cores padrão caso não sejam fornecidas
+        default_colors = {
+            'student_name': (0, 0, 0),  # Preto
+            'scores': (0, 0, 0),        # Preto
+            'date': (0, 0, 0)           # Preto
+        }
         
-        # Processar cores fornecidas
+        # Processar cores fornecidas ou usar padrão
         colors = {}
         required_fields = ['student_name', 'scores', 'date']
         
         for field in required_fields:
-            if field not in custom_colors:
-                raise ValueError(f"Cor para '{field}' não fornecida. Configure no editor primeiro.")
-            
-            parsed_color = self._parse_color_input(custom_colors[field])
-            if not parsed_color:
-                raise ValueError(f"Cor inválida para '{field}': {custom_colors[field]}. Configure no editor primeiro.")
-            colors[field] = parsed_color
+            if custom_colors and field in custom_colors:
+                parsed_color = self._parse_color_input(custom_colors[field])
+                colors[field] = parsed_color if parsed_color else default_colors[field]
+            else:
+                colors[field] = default_colors[field]
         
-        # EXIGIR coordenadas personalizadas também
-        if not hasattr(self, '_custom_coordinates') or not self._custom_coordinates:
-            raise ValueError("Posições não fornecidas. Configure no editor primeiro.")
+        # Coordenadas base (padrão ou personalizadas)
+        default_coordinates = {
+            'student_name': {'x': 350, 'y': 355},
+            'listening_score': {'x': 370, 'y': 403},
+            'reading_score': {'x': 485, 'y': 403},
+            'lfm_score': {'x': 370, 'y': 418},
+            'overall_score': {'x': 485, 'y': 418},
+            'test_date': {'x': 420, 'y': 442}
+        }
         
-        # Coordenadas base (serão sobrescritas pelas personalizadas)
         coordinates = {
             'student_name': {
-                'x': 0,  # Será sobrescrito
-                'y': 0,  # Será sobrescrito
-                'font_size': 100,  # Padrão, pode ser sobrescrito
+                'x': default_coordinates['student_name']['x'],
+                'y': default_coordinates['student_name']['y'],
+                'font_size': 100,
                 'color': colors['student_name'],
                 'font_weight': 'bold'
             },
             'listening_score': {
-                'x': 0,  # Será sobrescrito
-                'y': 0,  # Será sobrescrito
-                'font_size': 14,  # Padrão, pode ser sobrescrito
+                'x': default_coordinates['listening_score']['x'],
+                'y': default_coordinates['listening_score']['y'],
+                'font_size': 14,
                 'color': colors['scores'],
                 'font_weight': 'normal'
             },
             'reading_score': {
-                'x': 0,  # Será sobrescrito
-                'y': 0,  # Será sobrescrito
-                'font_size': 14,  # Padrão, pode ser sobrescrito
+                'x': default_coordinates['reading_score']['x'],
+                'y': default_coordinates['reading_score']['y'],
+                'font_size': 14,
                 'color': colors['scores'],
                 'font_weight': 'normal'
             },
             'lfm_score': {
-                'x': 0,  # Será sobrescrito
-                'y': 0,  # Será sobrescrito
-                'font_size': 14,  # Padrão, pode ser sobrescrito
+                'x': default_coordinates['lfm_score']['x'],
+                'y': default_coordinates['lfm_score']['y'],
+                'font_size': 14,
                 'color': colors['scores'],
                 'font_weight': 'normal'
             },
             'overall_score': {
-                'x': 0,  # Será sobrescrito
-                'y': 0,  # Será sobrescrito
-                'font_size': 14,  # Padrão, pode ser sobrescrito
+                'x': default_coordinates['overall_score']['x'],
+                'y': default_coordinates['overall_score']['y'],
+                'font_size': 14,
                 'color': colors['scores'],
                 'font_weight': 'normal'
             },
             'test_date': {
-                'x': 0,  # Será sobrescrito
-                'y': 0,  # Será sobrescrito
-                'font_size': 12,  # Padrão, pode ser sobrescrito
+                'x': default_coordinates['test_date']['x'],
+                'y': default_coordinates['test_date']['y'],
+                'font_size': 12,
                 'color': colors['date'],
                 'font_weight': 'normal'
             }
         }
         
-        # Aplicar coordenadas personalizadas (OBRIGATÓRIAS)
-        for field_name, custom_pos in self._custom_coordinates.items():
-            if field_name in coordinates:
-                coordinates[field_name]['x'] = custom_pos['x']
-                coordinates[field_name]['y'] = custom_pos['y']
+        # Aplicar coordenadas personalizadas se existirem
+        if hasattr(self, '_custom_coordinates') and self._custom_coordinates:
+            for field_name, custom_pos in self._custom_coordinates.items():
+                if field_name in coordinates:
+                    coordinates[field_name]['x'] = custom_pos['x']
+                    coordinates[field_name]['y'] = custom_pos['y']
         
         return coordinates
     
