@@ -138,20 +138,22 @@ class Student(db.Model):
         return max(0, meta_score - self.total)
     
     def calculate_final_cefr(self):
-        """Calcula o nível CEFR final baseado na pontuação total"""
+        """Calcula o nível CEFR final baseado na pontuação total TOEFL Junior (600-900)"""
         if not self.total:
             return 'N/A'
         
-        if self.total >= 800:
+        # Escala TOEFL Junior: 600-900 total
+        # Baseado na documentação oficial ETS
+        if self.total >= 845:  # Aproximadamente B2
             return 'B2'
-        elif self.total >= 700:
+        elif self.total >= 735:  # Aproximadamente B1
             return 'B1'
-        elif self.total >= 650:
-            return 'A2+'
-        elif self.total >= 600:
+        elif self.total >= 630:  # Aproximadamente A2
             return 'A2'
         else:
-            return 'A1'
+            # Para pontuações entre 600-629, ainda consideramos A2 (nível mínimo válido)
+            # pois a escala TOEFL Junior não permite classificações A1
+            return 'A2'
     
     def calculate_cefr_level(self):
         """Alias para calculate_final_cefr para compatibilidade"""
@@ -223,7 +225,7 @@ class ComputedLevel(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relacionamento
-    student = db.relationship('Student', backref='computed_level', uselist=False, passive_deletes=True)
+    student = db.relationship('Student', backref=db.backref('computed_level', uselist=False), uselist=False, passive_deletes=True)
     
     def __repr__(self):
         return f'<ComputedLevel for Student {self.student_id}>'

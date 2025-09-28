@@ -10,7 +10,6 @@ from datetime import datetime, timedelta
 import io
 import csv
 from config import config
-from config_local import build_sqlalchemy_uri
 # Removida dependência do CertificateGenerator - funcionalidade integrada diretamente
 from PIL import Image, ImageDraw, ImageFont
 from functools import lru_cache
@@ -28,9 +27,9 @@ def create_app(config_name=None):
     # Carregar configurações
     app.config.from_object(config[config_name])
     
-    # Configurar banco de dados com a nova função
-    db_uri = build_sqlalchemy_uri()
-    print(f"Conectando ao banco: {db_uri.split('@')[0]}@***")  # Log sem senha
+    # Configurar banco de dados
+    db_uri = app.config.get('SQLALCHEMY_DATABASE_URI')
+    print(f"Conectando ao banco: {db_uri.split('@')[0] if '@' in db_uri else db_uri.split('/')[-1]}@***")  # Log sem senha
     
     app.config["SQLALCHEMY_DATABASE_URI"] = db_uri
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False

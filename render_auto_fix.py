@@ -1,288 +1,178 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
-Script de Correção Automática para Render.com
-
-Este script é executado via interface administrativa para:
-1. Corrigir turmas sem meta_label
-2. Verificar e corrigir CSA de Listening para todos os estudantes
-3. Gerar relatórios detalhados
-
-Uso via interface administrativa:
-    - Acesse /admin
-    - Clique no botão "Executar Correções Automáticas"
+Script de correção automática para o sistema TOEFL
+Combina correção de turma_meta e recálculo de Listening CSA
 """
 
-import os
-import sys
-from datetime import datetime
-from flask import jsonify
-
-# Adicionar o diretório raiz ao path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from models import db, Student, Class
+import time
+from app import create_app
+from models import Student, db
 from listening_csa import compute_listening_csa
 
-def suggest_meta_label(class_name):
-    """Sugere um meta_label baseado no nome da turma"""
-    name_lower = class_name.lower()
-    
-    # Padrões para 6º ano
-    if any(pattern in name_lower for pattern in ['6', 'sexto', 'sixth']):
-        if any(pattern in name_lower for pattern in ['a', '1', 'primeira', 'first']):
-            return '6.1'
-        elif any(pattern in name_lower for pattern in ['b', '2', 'segunda', 'second']):
-            return '6.2'
-        elif any(pattern in name_lower for pattern in ['c', '3', 'terceira', 'third']):
-            return '6.3'
-        else:
-            return '6.1'  # Default para 6º ano
-    
-    # Padrões para 9º ano
-    elif any(pattern in name_lower for pattern in ['9', 'nono', 'ninth']):
-        if any(pattern in name_lower for pattern in ['a', '1', 'primeira', 'first']):
-            return '9.1'
-        elif any(pattern in name_lower for pattern in ['b', '2', 'segunda', 'second']):
-            return '9.2'
-        elif any(pattern in name_lower for pattern in ['c', '3', 'terceira', 'third']):
-            return '9.3'
-        else:
-            return '9.1'  # Default para 9º ano
-    
-    # Se não conseguir identificar, usar 6.1 como padrão
-    return '6.1'
-
-def fix_classes_meta_label():
-    """Corrige turmas sem meta_label"""
-    try:
-        # Buscar turmas sem meta_label
-        classes_without_meta = Class.query.filter(
-            (Class.meta_label == None) | (Class.meta_label == '')
-        ).all()
-        
-        if not classes_without_meta:
-            return {
-                'success': True,
-                'message': 'Todas as turmas já possuem meta_label definido',
-                'corrections_made': 0,
-                'details': []
-            }
-        
-        corrections_made = 0
-        details = []
-        
-        for class_obj in classes_without_meta:
-            suggested_label = suggest_meta_label(class_obj.name)
-            old_label = class_obj.meta_label or 'None'
-            
-            class_obj.meta_label = suggested_label
-            corrections_made += 1
-            
-            details.append({
-                'class_name': class_obj.name,
-                'class_id': class_obj.id,
-                'students_count': len(class_obj.students),
-                'old_label': old_label,
-                'new_label': suggested_label
-            })
-        
-        db.session.commit()
-        
-        return {
-            'success': True,
-            'message': f'{corrections_made} turmas corrigidas com sucesso',
-            'corrections_made': corrections_made,
-            'details': details
-        }
-        
-    except Exception as e:
-        db.session.rollback()
-        return {
-            'success': False,
-            'message': f'Erro ao corrigir turmas: {str(e)}',
-            'corrections_made': 0,
-            'details': []
-        }
-
-def fix_listening_csa():
-    """Verifica e corrige CSA de Listening para todos os estudantes"""
-    try:
-        # Buscar todos os estudantes
-        students = Student.query.all()
-        total_students = len(students)
-        
-        corrections_needed = 0
-        corrections_made = 0
-        errors = 0
-        error_details = []
-        correction_details = []
-        
-        for student in students:
-            try:
-                # Verificar se tem listening score
-                if not student.listening:
-                    continue
-                
-                # Usar turma_meta individual do estudante (nova implementação)
-                # Se não existir, usar meta_label da turma (compatibilidade)
-                rotulo_escolar = None
-                
-                if hasattr(student, 'turma_meta') and student.turma_meta:
-                    rotulo_escolar = student.turma_meta
-                elif student.class_info and student.class_info.meta_label:
-                    rotulo_escolar = student.class_info.meta_label
-                
-                if not rotulo_escolar:
-                    error_msg = f"Estudante {student.name} sem rótulo escolar (turma_meta ou meta_label)"
-                    error_details.append({
-                        'student_id': student.id,
-                        'student_name': student.name,
-                        'class_name': student.class_info.name if student.class_info else 'Sem turma',
-                        'error': error_msg
-                    })
-                    errors += 1
-                    continue
-                
-                # Calcular CSA esperado
-                csa_result = compute_listening_csa(
-                    rotulo_escolar=rotulo_escolar,
-                    listening_score=student.listening
-                )
-                
-                expected_csa = csa_result['points']
-                current_csa = student.listening_csa_points or 0
-                
-                needs_fix = abs(expected_csa - current_csa) > 0.01
-                
-                if needs_fix:
-                    corrections_needed += 1
-                    student.listening_csa_points = expected_csa
-                    corrections_made += 1
-                    
-                    correction_details.append({
-                        'student_id': student.id,
-                        'student_name': student.name,
-                        'class_name': student.class_info.name if student.class_info else 'Sem turma',
-                        'listening_score': student.listening,
-                        'old_csa': current_csa,
-                        'new_csa': expected_csa,
-                        'expected_level': csa_result['expected_level'],
-                        'obtained_level': csa_result['obtained_level'],
-                        'rotulo_usado': rotulo_escolar
-                    })
-                
-            except Exception as e:
-                error_msg = f"Erro no cálculo: {str(e)}"
-                error_details.append({
-                    'student_id': student.id,
-                    'student_name': student.name,
-                    'class_name': student.class_info.name if student.class_info else 'Sem turma',
-                    'error': error_msg
-                })
-                errors += 1
-        
-        # Salvar alterações
-        if corrections_made > 0:
-            db.session.commit()
-        
-        return {
-            'success': True,
-            'message': f'Verificação concluída: {corrections_made} correções aplicadas',
-            'total_students': total_students,
-            'corrections_made': corrections_made,
-            'errors': errors,
-            'correction_details': correction_details[:10],  # Limitar a 10 para não sobrecarregar
-            'error_details': error_details[:10],  # Limitar a 10 para não sobrecarregar
-            'has_more_corrections': len(correction_details) > 10,
-            'has_more_errors': len(error_details) > 10
-        }
-        
-    except Exception as e:
-        db.session.rollback()
-        return {
-            'success': False,
-            'message': f'Erro durante verificação: {str(e)}',
-            'total_students': 0,
-            'corrections_made': 0,
-            'errors': 0,
-            'correction_details': [],
-            'error_details': []
-        }
-
 def run_auto_fix():
-    """Executa todas as correções automáticas"""
-    start_time = datetime.now()
+    """
+    Executa todas as correções automáticas necessárias
+    Retorna um dicionário com os resultados
+    """
+    start_time = time.time()
+    
+    # Criar contexto da aplicação
+    app = create_app()
+    if isinstance(app, tuple):
+        app = app[0]
     
     results = {
-        'start_time': start_time.strftime('%Y-%m-%d %H:%M:%S'),
-        'end_time': None,
-        'duration_seconds': None,
         'overall_success': True,
         'total_corrections': 0,
-        'class_fixes': None,
-        'csa_fixes': None
+        'duration_seconds': 0,
+        'details': {
+            'turma_meta_fixed': 0,
+            'csa_recalculated': 0,
+            'errors': []
+        }
     }
     
     try:
-        # 1. Corrigir meta_labels das turmas
-        print("Iniciando correção de meta_labels das turmas...")
-        class_result = fix_classes_meta_label()
-        results['class_fixes'] = class_result
-        
-        if not class_result['success']:
-            results['overall_success'] = False
-        else:
-            results['total_corrections'] += class_result['corrections_made']
-        
-        # 2. Corrigir CSA de Listening
-        print("Iniciando correção de CSA de Listening...")
-        csa_result = fix_listening_csa()
-        results['csa_fixes'] = csa_result
-        
-        if not csa_result['success']:
-            results['overall_success'] = False
-        else:
-            results['total_corrections'] += csa_result['corrections_made']
-        
-        # Finalizar
-        end_time = datetime.now()
-        results['end_time'] = end_time.strftime('%Y-%m-%d %H:%M:%S')
-        results['duration_seconds'] = (end_time - start_time).total_seconds()
-        
-        print(f"Correções concluídas em {results['duration_seconds']:.2f} segundos")
-        
-        return results
-        
+        with app.app_context():
+            print("🔄 Iniciando correção automática...")
+            
+            # 1. Corrigir turma_meta
+            print("📝 Corrigindo turma_meta...")
+            turma_meta_result = fix_turma_meta()
+            results['details']['turma_meta_fixed'] = turma_meta_result['fixed_count']
+            results['total_corrections'] += turma_meta_result['fixed_count']
+            
+            if turma_meta_result['errors']:
+                results['details']['errors'].extend(turma_meta_result['errors'])
+            
+            # 2. Recalcular Listening CSA
+            print("🔢 Recalculando Listening CSA...")
+            csa_result = recalculate_listening_csa()
+            results['details']['csa_recalculated'] = csa_result['updated_count']
+            results['total_corrections'] += csa_result['updated_count']
+            
+            if csa_result['errors']:
+                results['details']['errors'].extend(csa_result['errors'])
+            
+            # Verificar se houve erros
+            if results['details']['errors']:
+                results['overall_success'] = False
+            
+            results['duration_seconds'] = time.time() - start_time
+            
+            print(f"✅ Correção automática concluída em {results['duration_seconds']:.2f}s")
+            print(f"📊 Total de correções: {results['total_corrections']}")
+            
+            return results
+            
     except Exception as e:
-        end_time = datetime.now()
-        results['end_time'] = end_time.strftime('%Y-%m-%d %H:%M:%S')
-        results['duration_seconds'] = (end_time - start_time).total_seconds()
         results['overall_success'] = False
-        results['error'] = str(e)
-        
-        print(f"Erro durante execução: {str(e)}")
+        results['details']['errors'].append(f"Erro geral: {str(e)}")
+        results['duration_seconds'] = time.time() - start_time
+        print(f"❌ Erro durante correção automática: {e}")
         return results
 
-if __name__ == '__main__':
-    # Para testes locais
-    from app import create_app
+def fix_turma_meta():
+    """Corrige o turma_meta dos alunos baseado no meta_label da classe"""
+    
+    result = {
+        'fixed_count': 0,
+        'errors': []
+    }
     
     try:
-        app, csrf = create_app()
-    except ValueError:
-        app = create_app()
+        # Buscar alunos sem turma_meta
+        students_without_meta = Student.query.filter(
+            (Student.turma_meta.is_(None)) | (Student.turma_meta == '')
+        ).all()
+        
+        print(f"📊 Encontrados {len(students_without_meta)} alunos sem turma_meta")
+        
+        for student in students_without_meta:
+            try:
+                if student.class_info and student.class_info.meta_label:
+                    student.turma_meta = student.class_info.meta_label
+                    result['fixed_count'] += 1
+                    print(f"✅ {student.name}: turma_meta definido como {student.turma_meta}")
+                else:
+                    print(f"⚠️ {student.name}: Sem classe ou meta_label")
+                    
+            except Exception as e:
+                error_msg = f"Erro ao corrigir {student.name}: {e}"
+                result['errors'].append(error_msg)
+                print(f"❌ {error_msg}")
+        
+        if result['fixed_count'] > 0:
+            db.session.commit()
+            print(f"✅ {result['fixed_count']} alunos corrigidos com sucesso")
+        else:
+            print("ℹ️ Nenhum aluno precisou de correção de turma_meta")
+            
+    except Exception as e:
+        db.session.rollback()
+        error_msg = f"Erro ao corrigir turma_meta: {e}"
+        result['errors'].append(error_msg)
+        print(f"❌ {error_msg}")
     
-    with app.app_context():
-        result = run_auto_fix()
-        print("\n=== RESULTADO FINAL ===")
-        print(f"Sucesso: {result['overall_success']}")
-        print(f"Total de correções: {result['total_corrections']}")
-        print(f"Duração: {result['duration_seconds']:.2f} segundos")
+    return result
+
+def recalculate_listening_csa():
+    """Recalcula os pontos CSA para todos os alunos"""
+    
+    result = {
+        'updated_count': 0,
+        'errors': []
+    }
+    
+    try:
+        # Buscar todos os alunos com listening e turma_meta
+        students = Student.query.filter(
+            Student.listening.isnot(None),
+            Student.turma_meta.isnot(None),
+            Student.turma_meta != ''
+        ).all()
         
-        if result['class_fixes']:
-            print(f"\nTurmas corrigidas: {result['class_fixes']['corrections_made']}")
+        print(f"📊 Encontrados {len(students)} alunos para recálculo de CSA")
         
-        if result['csa_fixes']:
-            print(f"CSA corrigidos: {result['csa_fixes']['corrections_made']}")
-            print(f"Erros encontrados: {result['csa_fixes']['errors']}")
+        for student in students:
+            try:
+                # Calcular CSA
+                csa_result = compute_listening_csa(student.turma_meta, student.listening)
+                old_points = student.listening_csa_points
+                new_points = csa_result['points']
+                
+                student.listening_csa_points = new_points
+                result['updated_count'] += 1
+                
+                if result['updated_count'] <= 5:  # Mostrar apenas os primeiros 5
+                    print(f"✅ {student.name}: {old_points} → {new_points}")
+                elif result['updated_count'] == 6:
+                    print("... (continuando recálculo)")
+                    
+            except Exception as e:
+                error_msg = f"Erro ao recalcular CSA para {student.name}: {e}"
+                result['errors'].append(error_msg)
+                print(f"❌ {error_msg}")
+        
+        if result['updated_count'] > 0:
+            db.session.commit()
+            print(f"✅ {result['updated_count']} alunos recalculados com sucesso")
+        else:
+            print("ℹ️ Nenhum aluno precisou de recálculo de CSA")
+            
+    except Exception as e:
+        db.session.rollback()
+        error_msg = f"Erro ao recalcular CSA: {e}"
+        result['errors'].append(error_msg)
+        print(f"❌ {error_msg}")
+    
+    return result
+
+if __name__ == "__main__":
+    result = run_auto_fix()
+    print(f"\n📋 Resultado final:")
+    print(f"Sucesso geral: {result['overall_success']}")
+    print(f"Total de correções: {result['total_corrections']}")
+    print(f"Duração: {result['duration_seconds']:.2f}s")
+    if result['details']['errors']:
+        print(f"Erros: {len(result['details']['errors'])}")

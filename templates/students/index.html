@@ -219,9 +219,9 @@ Pedro; Ana">{{ request.args.get('search', '') }}</textarea>
                             <th>Nome</th>
                             <th>Professor</th>
                             <th>Turma</th>
-                            <th class="text-center">Rótulo Escolar</th>
-                            <th class="text-center">Listening</th>
+                            <th class="text-center">NÍVEL ESCOLAR</th>
                             <th class="text-center">Listening CSA</th>
+                            <th class="text-center">Listening</th>
                             <th class="text-center">Reading</th>
                             <th class="text-center">LFM</th>
                             <th class="text-center">Total</th>
@@ -297,13 +297,6 @@ Pedro; Ana">{{ request.args.get('search', '') }}</textarea>
                                     </div>
                                 </td>
                                 <td class="text-center">
-                                    {% if student.listening %}
-                                        <span class="badge bg-light text-dark">{{ student.listening }}</span>
-                                    {% else %}
-                                        <span class="text-muted">-</span>
-                                    {% endif %}
-                                </td>
-                                <td class="text-center">
                                     {% if student.turma_meta and student.listening %}
                                         {% set listening_csa = student.compute_listening_csa() %}
                                         {% if listening_csa %}
@@ -318,6 +311,13 @@ Pedro; Ana">{{ request.args.get('search', '') }}</textarea>
                                     {% endif %}
                                 </td>
                                 <td class="text-center">
+                                    {% if student.listening %}
+                                        <span class="badge bg-light text-dark">{{ student.listening }}</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
                                     <span class="badge bg-light text-dark">{{ student.reading or '-' }}</span>
                                 </td>
                                 <td class="text-center">
@@ -327,7 +327,8 @@ Pedro; Ana">{{ request.args.get('search', '') }}</textarea>
                                     <strong class="text-primary">{{ student.total or '-' }}</strong>
                                 </td>
                                 <td class="text-center">
-                                    {% set cefr = student.get_cefr_level() %}
+                                    {% set computed_level = student.computed_level %}
+                                    {% set cefr = computed_level.overall_level if computed_level else student.get_cefr_level() %}
                                     {% if cefr == 'B2' %}
                                         <span class="badge bg-success">{{ cefr }}</span>
                                     {% elif cefr == 'B1' %}
