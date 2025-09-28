@@ -29,11 +29,13 @@ class ProductionConfig(Config):
     # Configuração do PostgreSQL para produção com SSL
     DATABASE_URL = os.environ.get('DATABASE_URL')
     if not DATABASE_URL:
-        DATABASE_URL = 'postgresql://user:password@localhost/toefl_dashboard'
+        DATABASE_URL = 'postgresql+psycopg://user:password@localhost/toefl_dashboard'
     else:
-        # Corrige prefixo heroku-like e força SSL no Render
+        # Corrige prefixo heroku-like e força driver psycopg v3
         if DATABASE_URL.startswith('postgres://'):
-            DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+            DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql+psycopg://', 1)
+        elif DATABASE_URL.startswith('postgresql://'):
+            DATABASE_URL = DATABASE_URL.replace('postgresql://', 'postgresql+psycopg://', 1)
         
         # Adiciona SSL se for PostgreSQL e não tiver sslmode
         try:
