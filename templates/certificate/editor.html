@@ -256,25 +256,57 @@ const currentStudentId = urlParams.get('student_id');
 // Variáveis globais para otimização
 let previewUpdateTimeout;
 let lastPreviewUpdate = 0;
-const PREVIEW_UPDATE_DELAY = 16; // 16ms = ~60fps para sincronização em tempo real
+const PREVIEW_UPDATE_DELAY = 8; // 8ms = ~120fps para sincronização ultra-rápida
+
+// Função para capturar posições atuais dos elementos
+function getCurrentPositions() {
+    const positions = {};
+    const canvas = $('#certificateCanvas');
+    const canvasWidth = canvas.width();
+    const canvasHeight = canvas.height();
+    
+    console.log('=== getCurrentPositions DEBUG ===');
+    console.log('Canvas dimensions:', canvasWidth, 'x', canvasHeight);
+    
+    $('.draggable-element').each(function() {
+        const element = $(this);
+        const elementId = element.attr('id');
+        const position = element.position();
+        
+        // Converter para porcentagem para manter proporção
+        const xPercent = (position.left / canvasWidth) * 100;
+        const yPercent = (position.top / canvasHeight) * 100;
+        
+        positions[elementId] = {
+            x: Math.round(position.left),
+            y: Math.round(position.top),
+            x_percent: xPercent,
+            y_percent: yPercent
+        };
+        
+        console.log(`${elementId}: x=${position.left}, y=${position.top} (${xPercent.toFixed(2)}%, ${yPercent.toFixed(2)}%)`);
+    });
+    
+    return positions;
+}
 
 // Função otimizada para gerar preview lateral com sincronização em tempo real
 function generateSidePreview() {
     if (!sidePreviewVisible) return;
     
-    // Implementar debounce ultra-rápido para sincronização em tempo real
+    // Para drag em tempo real, executar imediatamente sem debounce
+    if (isDragging) {
+        generateSidePreviewImmediate();
+        return;
+    }
+    
+    // Implementar debounce mais rápido para outras interações
     const now = Date.now();
-    if (now - lastPreviewUpdate < 16) { // 16ms = ~60fps
+    if (now - lastPreviewUpdate < PREVIEW_UPDATE_DELAY) {
         clearTimeout(previewUpdateTimeout);
         previewUpdateTimeout = setTimeout(() => {
             generateSidePreviewImmediate();
         }, PREVIEW_UPDATE_DELAY);
-        return;
-    }
-    
-    // Para drag em tempo real, executar imediatamente
-    if (isDragging) {
-        generateSidePreviewImmediate();
         return;
     }
     
@@ -328,10 +360,12 @@ function generateSidePreviewImmediate() {
         },
         data: JSON.stringify(requestData),
         success: function(response) {
-            if (response.success) {
-                $('#sidePreviewImage').attr('src', 'data:image/png;base64,' + response.certificate);
+            if (response.success && response.image) {
+                $('#sidePreviewImage').attr('src', response.image);
                 updateSidePreviewScale();
                 console.log('Preview lateral atualizado com sucesso');
+            } else {
+                console.error('Resposta inválida do servidor:', response);
             }
         },
         error: function() {
@@ -388,10 +422,10 @@ function setupEventListeners() {
     $('#zoomOut').on('click', function() { changeZoom(-25); });
     $('#zoomReset').on('click', function() { setZoom(100); });
     
-    // Color controls
-    $('#nameColor, #scoresColor, #dateColor').on('change', function() {
+    // Color controls - Adicionar listeners para mudanças em tempo real nos color pickers
+    $('#nameColor, #scoresColor, #dateColor').on('input change', function() {
         updateColors();
-        generateSidePreview(); // Atualizar também o preview lateral
+        generateSidePreviewImmediate(); // Atualização instantânea para mudanças de cor em tempo real
     });
     
     // Font size controls - CORRIGIDO para afetar também o preview
@@ -403,7 +437,7 @@ function setupEventListeners() {
             
             // Atualizar preview imediatamente com o novo tamanho
             updatePositionInfo();
-            generateSidePreview(); // Atualiza preview lateral
+            generateSidePreviewImmediate(); // Atualização instantânea para mudanças de fonte
             
             console.log(`Fonte aumentada para ${newSize}px no elemento ${selectedElement.attr('id')}`);
         } else {
@@ -420,7 +454,7 @@ function setupEventListeners() {
                 
                 // Atualizar preview imediatamente com o novo tamanho
                 updatePositionInfo();
-                generateSidePreview(); // Atualiza preview lateral
+                generateSidePreviewImmediate(); // Atualização instantânea para mudanças de fonte
                 
                 console.log(`Fonte diminuída para ${newSize}px no elemento ${selectedElement.attr('id')}`);
             } else {
@@ -447,7 +481,7 @@ function setupEventListeners() {
             
             // Atualizar preview imediatamente com o tamanho padrão
             updatePositionInfo();
-            generateSidePreview(); // Atualiza preview lateral
+            generateSidePreviewImmediate(); // Atualização instantânea para reset de fonte
             
             console.log(`Fonte resetada para ${defaultSize} no elemento ${elementId}`);
         } else {
@@ -487,7 +521,7 @@ function setupEventListeners() {
             const reader = new FileReader();
             reader.onload = function(e) {
                 $('#certificateBackground').attr('src', e.target.result);
-                generateSidePreview();
+                generateSidePreviewImmediate(); // Atualização instantânea para mudança de imagem
             };
             reader.readAsDataURL(file);
         }
@@ -543,7 +577,7 @@ function setupEventListeners() {
             
             console.log('Nova posição aplicada:', newX, newY);
             updatePositionInfo();
-            generateSidePreview();
+            generateSidePreviewImmediate(); // Atualização instantânea para mudança de posição
         }
     });
 }
@@ -1013,7 +1047,9 @@ function initializeDragAndDrop() {
                     });
                     
                     updatePositionInfo();
-                    generateSidePreview();
+                    
+                    // Atualização em tempo real durante o drag - sem debounce
+                    generateSidePreviewImmediate();
                 }
             });
             
@@ -1099,7 +1135,7 @@ function downloadSidePreview() {
 $(document).ready(function() {
     // Aguardar um pouco para garantir que tudo foi carregado
     setTimeout(function() {
-        generateSidePreview();
+        generateSidePreviewImmediate(); // Atualização instantânea na inicialização
     }, 1000);
     
     // Também gerar quando a janela for redimensionada
