@@ -52,16 +52,16 @@ def validate_and_fix_database_url():
 
 print("🚀 INICIANDO APLICAÇÃO TOEFL DASHBOARD...")
 
-# Criar aplicação
-app = create_app()
+# Criar a aplicação Flask - desempacotar a tupla (app, csrf)
+app, csrf = create_app()
 
 # Validar e corrigir DATABASE_URL se necessário
 corrected_url = validate_and_fix_database_url()
 if corrected_url and corrected_url != os.environ.get('DATABASE_URL'):
     print("🔧 Aplicando correção da DATABASE_URL...")
     os.environ['DATABASE_URL'] = corrected_url
-    # Recriar app com URL corrigida
-    app = create_app()
+    # Recriar a aplicação com a URL corrigida - desempacotar novamente
+    app, csrf = create_app()
 
 # Inicializar banco de dados com retry robusto
 with app.app_context():
