@@ -29,9 +29,9 @@ def validate_and_fix_database_url():
         print("🔧 Convertendo postgresql:// para postgresql+psycopg://")
         database_url = database_url.replace('postgresql://', 'postgresql+psycopg://', 1)
     
-    # Verificar se precisa de SSL
-    if '10.221.202.187' in database_url and '?sslmode=' not in database_url:
-        print("🔧 Adicionando SSL para conexão interna do Render")
+    # Adicionar SSL para conexões do Render (tanto internas quanto externas)
+    if 'render.com' in database_url and '?sslmode=' not in database_url:
+        print("🔧 Adicionando SSL para conexão do Render")
         database_url += '?sslmode=require'
     
     print(f"   DATABASE_URL corrigida: {mask_database_url(database_url)}")
@@ -41,7 +41,7 @@ def validate_and_fix_database_url():
         import urllib.parse
         parsed = urllib.parse.urlparse(database_url)
         print(f"   Host: {parsed.hostname}")
-        print(f"   Porta: {parsed.port}")
+        print(f"   Porta: {parsed.port or 5432}")
         print(f"   Usuário: {parsed.username}")
         print(f"   Banco: {parsed.path[1:] if parsed.path else 'N/A'}")
         print(f"   SSL: {'Sim' if 'sslmode=require' in database_url else 'Não'}")
@@ -50,10 +50,12 @@ def validate_and_fix_database_url():
     
     return database_url
 
-# Criar a aplicação usando a factory function
+print("🚀 INICIANDO APLICAÇÃO TOEFL DASHBOARD...")
+
+# Criar aplicação
 app = create_app()
 
-# Validar e corrigir DATABASE_URL antes de tentar conectar
+# Validar e corrigir DATABASE_URL se necessário
 corrected_url = validate_and_fix_database_url()
 if corrected_url and corrected_url != os.environ.get('DATABASE_URL'):
     print("🔧 Aplicando correção da DATABASE_URL...")
@@ -61,31 +63,31 @@ if corrected_url and corrected_url != os.environ.get('DATABASE_URL'):
     # Recriar app com URL corrigida
     app = create_app()
 
-# Inicializar banco de dados para produção com tratamento robusto
+# Inicializar banco de dados com retry robusto
 with app.app_context():
     from models import db
     from sqlalchemy import inspect, text
     import time
-    
+
     max_retries = 5  # Aumentar tentativas
-    retry_delay = 3  # Aumentar delay inicial
-    
+    retry_delay = 2  # Delay inicial menor para conexões rápidas
+
     print(f"🔧 Configuração do SQLAlchemy Engine:")
     print(f"   Pool size: {db.engine.pool.size()}")
     print(f"   Max overflow: {db.engine.pool._max_overflow}")
     print(f"   Pool timeout: {db.engine.pool._timeout}")
-    
+
     for attempt in range(max_retries):
         try:
             print(f"🔧 Tentativa {attempt + 1}/{max_retries} - Conectando ao banco...")
             
-            # Testar conexão primeiro com timeout específico
+            # Testar conexão
             with db.engine.connect() as conn:
                 result = conn.execute(text("SELECT version()"))
                 version = result.fetchone()[0]
                 print(f"✅ Conexão estabelecida! PostgreSQL: {version[:50]}...")
             
-            # Verificar se as tabelas existem
+            # Verificar/criar tabelas
             insp = inspect(db.engine)
             if not insp.has_table("classes"):
                 print("🔧 Criando tabelas do banco de dados...")
@@ -93,13 +95,15 @@ with app.app_context():
                 print("✅ Tabelas criadas com sucesso!")
             else:
                 print("✅ Tabelas do banco já existem.")
+            
+            print("🎉 BANCO DE DADOS INICIALIZADO COM SUCESSO!")
             break
             
         except Exception as e:
             error_msg = str(e)
             print(f"❌ Erro na tentativa {attempt + 1}: {error_msg}")
             
-            # Diagnóstico específico para erros comuns
+            # Diagnósticos específicos
             if "password authentication failed" in error_msg:
                 print("🔍 DIAGNÓSTICO: Falha de autenticação detectada!")
                 print("   Possíveis causas:")
@@ -123,7 +127,7 @@ with app.app_context():
             if attempt < max_retries - 1:
                 print(f"⏳ Aguardando {retry_delay}s antes da próxima tentativa...")
                 time.sleep(retry_delay)
-                retry_delay = min(retry_delay * 1.5, 30)  # Backoff com limite
+                retry_delay = min(retry_delay * 1.5, 20)  # Backoff com limite menor
             else:
                 print("❌ FALHA CRÍTICA: Não foi possível conectar ao banco após todas as tentativas")
                 print("🚨 AÇÃO NECESSÁRIA:")
@@ -133,7 +137,9 @@ with app.app_context():
                 print("   4. Considerar recriar o banco se necessário")
                 print("⚠️  Aplicação iniciará sem inicialização do banco")
 
-# Gunicorn padrão procura por "application"
+print("✅ APLICAÇÃO PRONTA PARA USO!")
+
+# Exportar aplicação para WSGI
 application = app
 
 if __name__ == '__main__':
