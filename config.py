@@ -26,38 +26,57 @@ class ProductionConfig(Config):
     """Configurações para produção"""
     DEBUG = False
     
-    # Configuração do PostgreSQL para produção com SSL
+    # Configuração do PostgreSQL para produção com SSL e fallbacks automáticos
     DATABASE_URL = os.environ.get('DATABASE_URL')
     if not DATABASE_URL:
         DATABASE_URL = 'postgresql+psycopg://user:password@localhost/toefl_dashboard'
     else:
-        # Corrige prefixo heroku-like e força driver psycopg v3
+        # Tratamento robusto da URL com múltiplos fallbacks
+        original_url = DATABASE_URL
+        
+        # 1. Corrige prefixo heroku-like e força driver psycopg v3
         if DATABASE_URL.startswith('postgres://'):
             DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql+psycopg://', 1)
+            print(f"🔧 URL convertida: postgres:// → postgresql+psycopg://")
         elif DATABASE_URL.startswith('postgresql://'):
             DATABASE_URL = DATABASE_URL.replace('postgresql://', 'postgresql+psycopg://', 1)
+            print(f"🔧 URL convertida: postgresql:// → postgresql+psycopg://")
         
-        # Adiciona SSL se for PostgreSQL e não tiver sslmode
+        # 2. Adiciona SSL se for PostgreSQL e não tiver sslmode
         try:
             url = make_url(DATABASE_URL)
             if url.drivername.startswith('postgresql'):
                 query = dict(url.query)
-                if 'sslmode' not in query:
-                    query['sslmode'] = 'require'
+                
+                # Força SSL para conexões externas (render.com)
+                if 'render.com' in str(url.host) or 'external' in str(url.host):
+                    if 'sslmode' not in query:
+                        query['sslmode'] = 'require'
+                        print(f"🔧 SSL adicionado para conexão externa")
+                
+                # Reconstrói URL com parâmetros SSL
                 url = url.set(query=query)
                 DATABASE_URL = str(url)
-        except Exception:
-            # Se falhar o parsing, mantém a URL original
-            pass
+                
+        except Exception as e:
+            print(f"⚠️  Erro ao processar URL do banco: {e}")
+            print(f"⚠️  Usando URL original: {original_url[:50]}...")
+            DATABASE_URL = original_url
     
     SQLALCHEMY_DATABASE_URI = DATABASE_URL
     
-    # Configurações do SQLAlchemy otimizadas para Render
+    # Configurações do SQLAlchemy otimizadas para Render com retry automático
     SQLALCHEMY_ENGINE_OPTIONS = {
         'pool_pre_ping': True,
-        'pool_size': 5,
-        'max_overflow': 0,
+        'pool_size': 3,  # Reduzido para Render free tier
+        'max_overflow': 2,  # Reduzido para evitar timeout
         'pool_recycle': 300,
+        'pool_timeout': 30,  # Timeout aumentado
+        'connect_args': {
+            'connect_timeout': 30,
+            'application_name': 'toefl_dashboard',
+            'options': '-c statement_timeout=30000'  # 30s timeout para queries
+        }
     }
     
     # Configurações de segurança para produção
