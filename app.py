@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, send_file, after_this_request
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_wtf.csrf import CSRFProtect
@@ -543,15 +543,124 @@ def create_app(config_name=None):
         @app.route('/download-backup')
         @login_required
         def download_backup():
-            # Implementação básica de backup
-            flash('Funcionalidade de backup em desenvolvimento.', 'info')
-            return redirect(url_for('dashboard'))
+            """Gera um arquivo de backup completo e o envia para download."""
+            try:
+                from database_backup import export_data_json
+                from datetime import datetime
+                import os
+                import tempfile
+
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                fd, temp_path = tempfile.mkstemp(suffix='.json', prefix='backup_')
+                os.close(fd)
+
+                export_data_json(temp_path)
+
+                download_name = f'backup_{timestamp}.json'
+
+                @after_this_request
+                def remove_file(response):
+                    try:
+                        os.remove(temp_path)
+                    except OSError:
+                        pass
+                    return response
+
+                return send_file(temp_path, as_attachment=True, download_name=download_name, mimetype='application/json')
+            except Exception as error:
+                flash(f'Erro ao gerar backup: {error}', 'error')
+                return redirect(url_for('dashboard'))
+
+        def restore_backup_from_filestorage(file_storage):
+            """Processa um arquivo de backup enviado via formulario ou fetch."""
+            import json
+            import os
+            import tempfile
+
+            if not file_storage:
+                return False, 'Nenhum arquivo foi selecionado.', {}, 400
+
+            filename = (file_storage.filename or '').strip()
+            if not filename:
+                return False, 'Nenhum arquivo foi selecionado.', {}, 400
+
+            if not filename.lower().endswith('.json'):
+                return False, 'Apenas arquivos JSON sao aceitos.', {}, 400
+
+            try:
+                file_bytes = file_storage.read()
+                if isinstance(file_bytes, bytes):
+                    file_content = file_bytes.decode('utf-8')
+                else:
+                    file_content = str(file_bytes)
+            except UnicodeDecodeError:
+                return False, 'Nao foi possivel ler o arquivo. Utilize UTF-8.', {}, 400
+            except Exception as decode_error:
+                return False, f'Erro ao ler arquivo: {decode_error}', {}, 400
+
+            try:
+                backup_data = json.loads(file_content)
+            except json.JSONDecodeError:
+                return False, 'Arquivo JSON invalido.', {}, 400
+
+            required_keys = {'teachers', 'classes', 'students'}
+            if not required_keys.issubset(backup_data.keys()):
+                return False, 'Arquivo de backup invalido. Estrutura incorreta.', {}, 400
+
+            temp_filename = None
+            import_result = None
+            try:
+                with tempfile.NamedTemporaryFile(mode='w+', suffix='.json', delete=False, encoding='utf-8') as temp_file:
+                    json.dump(backup_data, temp_file, ensure_ascii=False)
+                    temp_filename = temp_file.name
+
+                try:
+                    from restore_backup import import_data_json
+                    import_result = import_data_json(temp_filename)
+                except ImportError:
+                    from database_backup import import_data_json as fallback_import
+                    import_result = fallback_import(temp_filename)
+
+                promoted_total = 0
+                try:
+                    promoted_total = promote_a1_levels_to_a2()
+                except Exception as promote_error:
+                    print(f'Aviso: falha ao ajustar niveis A1 -> A2 apos restore: {promote_error}')
+
+                success = True
+                message = 'Backup restaurado com sucesso!'
+                details = {}
+
+                if isinstance(import_result, dict):
+                    success = import_result.get('success', True)
+                    message = import_result.get('message') or message
+                    details = import_result.get('details') or {}
+
+                if promoted_total:
+                    details = dict(details) if details else {}
+                    details['cefr_a1_promoted_to_a2'] = promoted_total
+                    message = f"{message} Ajustados {promoted_total} campos A1 -> A2."
+
+                status_code = 200 if success else 500
+                return success, message.strip(), details, status_code
+            except Exception as import_error:
+                return False, f'Erro ao restaurar backup: {import_error}', {}, 500
+            finally:
+                if temp_filename and os.path.exists(temp_filename):
+                    try:
+                        os.unlink(temp_filename)
+                    except OSError:
+                        pass
+
 
         @app.route('/upload-backup', methods=['POST'])
         @login_required
         def upload_backup():
-            # Redirecionar para a nova funcionalidade de restore-backup
-            return redirect(url_for('restore_backup'))
+            """Processa uploads de backup via dashboard (form tradicional)."""
+            file_storage = request.files.get('backup_file')
+            success, message, details, status_code = restore_backup_from_filestorage(file_storage)
+            flash(message, 'success' if success else 'error')
+            return redirect(url_for('dashboard'))
 
         @app.route('/certificate/editor')
         @login_required
@@ -1142,131 +1251,18 @@ def create_app(config_name=None):
         @app.route('/admin/restore-backup', methods=['GET', 'POST'])
         @login_required
         def restore_backup():
-            """Restaurar backup do banco de dados"""
+            """Restaura um backup via painel administrativo (fetch)."""
             if request.method == 'GET':
-                # Se for GET, redirecionar para o admin
                 return redirect(url_for('admin'))
-                
-            try:
-                # Verificar se foi enviado um arquivo
-                if 'backup_file' not in request.files:
-                    return jsonify({'success': False, 'message': 'Nenhum arquivo foi selecionado'}), 400
-                
-                file = request.files['backup_file']
-                if file.filename == '':
-                    return jsonify({'success': False, 'message': 'Nenhum arquivo foi selecionado'}), 400
-                
-                # Verificar se é um arquivo JSON
-                if not file.filename.lower().endswith('.json'):
-                    return jsonify({'success': False, 'message': 'Apenas arquivos JSON são aceitos'}), 400
-                
-                # Salvar arquivo temporariamente
-                import tempfile
-                import os
-                import json
-                
-                with tempfile.NamedTemporaryFile(mode='w+', suffix='.json', delete=False) as temp_file:
-                    # Ler e validar JSON
-                    try:
-                        file_content = file.read().decode('utf-8')
-                        backup_data = json.loads(file_content)
-                        
-                        # Validar estrutura básica do backup
-                        required_keys = ['teachers', 'classes', 'students']
-                        if not all(key in backup_data for key in required_keys):
-                            return jsonify({'success': False, 'message': 'Arquivo de backup inválido. Estrutura incorreta.'}), 400
-                        
-                        # Escrever dados validados no arquivo temporário
-                        json.dump(backup_data, temp_file, indent=2, ensure_ascii=False)
-                        temp_filename = temp_file.name
-                    
-                    except json.JSONDecodeError:
-                        return jsonify({'success': False, 'message': 'Arquivo JSON inválido'}), 400
-                    except Exception as e:
-                        return jsonify({'success': False, 'message': f'Erro ao processar arquivo: {str(e)}'}), 400
-                
-                # Importar dados usando o script existente
-                try:
-                    from restore_backup import import_data_json
-                    
-                    # Executar importação
-                    result = import_data_json(temp_filename)
-                    
-                    # Limpar arquivo temporário
-                    os.unlink(temp_filename)
-                    
-                    try:
-                        promoted_total = promote_a1_levels_to_a2()
-                    except Exception as promote_error:
-                        promoted_total = 0
-                        print(f"Aviso: falha ao ajustar niveis A1 -> A2 apos restore: {promote_error}")
 
-                    details = dict(result.get('details', {}) or {})
-                    if promoted_total:
-                        details['cefr_a1_promoted_to_a2'] = promoted_total
+            file_storage = request.files.get('backup_file')
+            success, message, details, status_code = restore_backup_from_filestorage(file_storage)
 
-                    success_message = 'Backup restaurado com sucesso!'
-                    result_message = result.get('message')
-                    if result_message:
-                        success_message += f" {result_message}"
-                    if promoted_total:
-                        success_message += f" Ajustados {promoted_total} campos A1 -> A2."
+            response = {'success': success, 'message': message}
+            if details:
+                response['details'] = details
 
-                    if result.get('success', False):
-                        return jsonify({
-                            'success': True,
-                            'message': success_message.strip(),
-                            'details': details
-                        })
-                    else:
-                        error_message = result.get('message', 'Erro desconhecido')
-                        return jsonify({
-                            'success': False,
-                            'message': f'Erro ao restaurar backup: {error_message}'
-                        }), 500
-                
-                except ImportError:
-                    # Se não tiver o script restore_backup, usar método alternativo
-                    from database_backup import import_data_json
-                    
-                    # Executar importação
-                    import_data_json(temp_filename)
-
-                    try:
-                        promoted_total = promote_a1_levels_to_a2()
-                    except Exception as promote_error:
-                        promoted_total = 0
-                        print(f"Aviso: falha ao ajustar niveis A1 -> A2 apos restore (fallback): {promote_error}")
-
-                    # Limpar arquivo temporario
-                    os.unlink(temp_filename)
-
-                    success_message = 'Backup restaurado com sucesso!'
-                    if promoted_total:
-                        success_message += f" Ajustados {promoted_total} campos A1 -> A2."
-
-                    response = {
-                        'success': True,
-                        'message': success_message.strip()
-                    }
-
-                    if promoted_total:
-                        response['details'] = {'cefr_a1_promoted_to_a2': promoted_total}
-
-                    return jsonify(response)
-                
-                except Exception as e:
-                    # Limpar arquivo temporário em caso de erro
-                    if 'temp_filename' in locals():
-                        try:
-                            os.unlink(temp_filename)
-                        except:
-                            pass
-                    
-                    return jsonify({'success': False, 'message': f'Erro ao restaurar backup: {str(e)}'}), 500
-            
-            except Exception as e:
-                return jsonify({'success': False, 'message': f'Erro interno: {str(e)}'}), 500
+            return jsonify(response), status_code
 
         @app.route('/admin/auto-fix', methods=['POST'])
         @login_required
