@@ -104,6 +104,32 @@
                 </div>
             </div>
             <div class="col-md-6">
+                <div class="alert alert-success" role="alert">
+                    <h6 class="alert-heading"><i class="bi bi-magic me-2"></i>Reset Perfeito com Backup</h6>
+                    <p class="mb-2">Esta ação irá:</p>
+                    <ul class="mb-2">
+                        <li><strong>Zerar completamente</strong> o banco de dados</li>
+                        <li><strong>Recriar schema perfeito</strong> com regras corretas</li>
+                        <li><strong>Importar dados</strong> do backup export_20250928_085940.json</li>
+                        <li><strong>Corrigir automaticamente</strong> inconsistências de teacher_id</li>
+                        <li><strong>Garantir integridade</strong> de todas as chaves estrangeiras</li>
+                    </ul>
+                    <hr>
+                    <button type="button" class="btn btn-success btn-sm" onclick="confirmPerfectReset()" id="perfectResetBtn">
+                        <i class="bi bi-magic me-1"></i>Reset Perfeito
+                    </button>
+                    <div id="perfectResetProgress" class="mt-2" style="display: none;">
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 100%"></div>
+                        </div>
+                        <small class="text-muted">Executando reset perfeito...</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
                 <div class="alert alert-info" role="alert">
                     <h6 class="alert-heading"><i class="bi bi-info-circle me-2"></i>Backup e Restauração</h6>
                     <p class="mb-2">Funcionalidades disponíveis:</p>
@@ -122,6 +148,9 @@
                         </button>
                     </div>
                 </div>
+            </div>
+            <div class="col-md-6">
+                <!-- Espaço reservado para futuras funcionalidades -->
             </div>
         </div>
         
@@ -836,6 +865,63 @@ function fixAsteriskCefr() {
         asteriskFixBtn.innerHTML = originalText;
         asteriskFixBtn.disabled = false;
         alert('Erro ao executar correção de asteriscos CEFR. Verifique o console para mais detalhes.');
+    });
+}
+
+function confirmPerfectReset() {
+    if (confirm('🚨 ATENÇÃO: RESET PERFEITO 🚨\n\nEsta ação irá:\n✅ ZERAR COMPLETAMENTE o banco de dados\n✅ RECRIAR schema perfeito com regras corretas\n✅ IMPORTAR dados do backup export_20250928_085940.json\n✅ CORRIGIR automaticamente inconsistências de teacher_id\n✅ GARANTIR integridade de todas as chaves estrangeiras\n\nEsta ação é IRREVERSÍVEL!\n\nDeseja continuar?')) {
+        runPerfectReset();
+    }
+}
+
+function runPerfectReset() {
+    const perfectResetBtn = document.getElementById('perfectResetBtn');
+    const progressDiv = document.getElementById('perfectResetProgress');
+    const originalText = perfectResetBtn.innerHTML;
+    
+    // Mostrar progresso
+    perfectResetBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Executando Reset Perfeito...';
+    perfectResetBtn.disabled = true;
+    progressDiv.style.display = 'block';
+    
+    fetch('/admin/reset-perfect', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        progressDiv.style.display = 'none';
+        perfectResetBtn.innerHTML = originalText;
+        perfectResetBtn.disabled = false;
+        
+        if (data.success) {
+            let message = `🎉 RESET PERFEITO EXECUTADO COM SUCESSO! 🎉\n\n`;
+            message += `✅ Banco de dados zerado e recriado\n`;
+            message += `✅ Schema perfeito implementado\n`;
+            message += `✅ Dados do backup importados\n`;
+            message += `✅ Inconsistências corrigidas\n`;
+            message += `✅ Integridade garantida\n\n`;
+            message += `A aplicação está pronta para uso!`;
+            
+            alert(message);
+            
+            // Recarregar a página para mostrar as atualizações
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        } else {
+            alert(`❌ Erro durante o reset perfeito:\n\n${data.message || 'Erro desconhecido'}\n\nVerifique os logs para mais detalhes.`);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        progressDiv.style.display = 'none';
+        perfectResetBtn.innerHTML = originalText;
+        perfectResetBtn.disabled = false;
+        alert('❌ Erro ao executar reset perfeito. Verifique o console para mais detalhes.');
     });
 }
 </script>

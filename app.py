@@ -1162,6 +1162,33 @@ def create_app(config_name=None):
             except Exception as e:
                 return jsonify({'success': False, 'message': f'Erro ao executar correções: {str(e)}'}), 500
 
+        @app.route('/admin/reset-perfect', methods=['POST'])
+        @login_required
+        def reset_perfect():
+            """Executar reset perfeito do banco de dados"""
+            try:
+                import subprocess
+                import sys
+                
+                # Executar o script render_perfect_reset.py
+                result = subprocess.run([sys.executable, 'render_perfect_reset.py'], 
+                                      capture_output=True, text=True, cwd=os.getcwd())
+                
+                if result.returncode == 0:
+                    return jsonify({
+                        'success': True, 
+                        'message': 'Reset perfeito executado com sucesso! Banco de dados recriado com dados do backup.',
+                        'output': result.stdout
+                    })
+                else:
+                    return jsonify({
+                        'success': False, 
+                        'message': f'Erro ao executar reset perfeito: {result.stderr}',
+                        'output': result.stdout
+                    })
+            except Exception as e:
+                return jsonify({'success': False, 'message': f'Erro ao executar reset perfeito: {str(e)}'}), 500
+
         @app.route('/admin/cefr-fix', methods=['POST'])
         @login_required
         def cefr_fix():
