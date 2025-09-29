@@ -35,12 +35,12 @@ class CertificateGenerator:
                     self.raw_default_positions = raw_positions
                     self.default_positions = self._convert_layout_positions_to_pixels(raw_positions)
                     self.default_colors = layout_data.get('colors', {}) or {}
-                    print(f"✅ Layout padrão carregado: {self.default_positions}")
+                    print(f'Layout padrão carregado: {self.default_positions}')
             else:
-                print(f"⚠️ Arquivo de layout não encontrado: {self.default_layout_path}")
+                print(f'Arquivo de layout não encontrado: {self.default_layout_path}')
                 self._set_fallback_layout()
         except Exception as e:
-            print(f"❌ Erro ao carregar layout padrão: {e}")
+            print(f'Erro ao carregar layout padrão: {e}')
             self._set_fallback_layout()
 
     def _set_fallback_layout(self):
@@ -202,6 +202,7 @@ class CertificateGenerator:
         return None
     
     def _update_coordinates(self, custom_positions):
+        print('CERT GENERATOR: applying custom positions', custom_positions)
         """
         Atualiza as coordenadas padrão com posições personalizadas
         
@@ -236,6 +237,7 @@ class CertificateGenerator:
         # Atualizar coordenadas padrão
         for frontend_id, position in custom_positions.items():
             if frontend_id in field_mapping:
+                print(f"  - field {frontend_id}: {position}")
                 field_name = field_mapping[frontend_id]
                 
                 # Converter percentuais para pixels usando as dimensões da imagem final
@@ -539,7 +541,10 @@ def create_certificate_for_student(student, custom_colors=None, custom_positions
     
     # Se posições personalizadas foram fornecidas, atualizar as coordenadas
     if custom_positions:
+        print('CERT: received custom positions', custom_positions)
         generator._update_coordinates(custom_positions)
+    else:
+        print('CERT: using default positions only')
     
     # Usar data personalizada se fornecida, senão usar data atual
     test_date = custom_date if custom_date else datetime.now().strftime("%d/%m/%Y")

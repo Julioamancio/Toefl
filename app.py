@@ -704,6 +704,7 @@ def create_app(config_name=None):
                 student_id = data.get('student_id')
                 custom_colors = data.get('colors', {})
                 custom_positions = data.get('positions', {})
+                print('DOWNLOAD CERT positions', custom_positions)
                 
                 if not student_id:
                     return jsonify({'error': 'ID do estudante é obrigatório'}), 400
