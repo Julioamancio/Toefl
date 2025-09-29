@@ -826,7 +826,7 @@ def create_app(config_name=None):
                 
                 # Se não há layout específico, carregar layout padrão do arquivo JSON
                 import json
-                default_layout_path = os.path.join('static', 'default_certificate_layout.json')
+                default_layout_path = os.path.join(app.root_path, 'static', 'default_certificate_layout.json')
                 
                 if os.path.exists(default_layout_path):
                     with open(default_layout_path, 'r') as f:
@@ -1067,7 +1067,7 @@ def create_app(config_name=None):
                     'colors': colors
                 }
                 
-                default_layout_path = os.path.join('static', 'default_certificate_layout.json')
+                default_layout_path = os.path.join(app.root_path, 'static', 'default_certificate_layout.json')
                 
                 # Criar diretório static se não existir
                 os.makedirs(os.path.dirname(default_layout_path), exist_ok=True)

@@ -7,6 +7,9 @@ import os
 import io
 import json
 from datetime import datetime
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 CANVAS_WIDTH = 800
 CANVAS_HEIGHT = 566
@@ -18,8 +21,8 @@ class CertificateGenerator:
     """Gerador de certificados TOEFL Junior"""
     
     def __init__(self):
-        self.template_path = os.path.join('static', 'templates', 'certificate_template.png')
-        self.default_layout_path = os.path.join('static', 'default_certificate_layout.json')
+        self.template_path = str(BASE_DIR / 'static' / 'templates' / 'certificate_template.png')
+        self.default_layout_path = str(BASE_DIR / 'static' / 'default_certificate_layout.json')
         self._load_default_layout()
     
     def _load_default_layout(self):
