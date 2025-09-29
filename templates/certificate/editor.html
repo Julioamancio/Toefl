@@ -61,7 +61,11 @@
                                     <i class="fas fa-plus"></i> A+
                                 </button>
                             </div>
-                            <small class="text-muted">Selecione um elemento e ajuste o tamanho</small>
+                            <div class="input-group input-group-sm mt-2">
+                                <span class="input-group-text">px</span>
+                                <input type="number" class="form-control" id="fontSizeInput" min="6" max="200" step="1" placeholder="Tamanho real" disabled>
+                            </div>
+                            <small class="text-muted">Selecione um elemento e ajuste o tamanho ou informe o valor desejado</small>
                             
                             <!-- Campo de Data -->
                             <div class="mt-3">
@@ -259,10 +263,12 @@ const CANVAS_HEIGHT = 566;
         const xPercent = (position.left / CANVAS_WIDTH) * 100;
         const yPercent = (position.top / CANVAS_HEIGHT) * 100;
         
+        const fontSize = parseFloat(element.css('font-size')) || 16;
+
         positions[elementId] = {
             x: xPercent,
             y: yPercent,
-            font_size: parseInt(element.css('font-size')) || 40
+            font_size: parseFloat(fontSize.toFixed(2))
         };
     });
     
@@ -481,6 +487,21 @@ function setupEventListeners() {
             alert('Selecione um elemento primeiro para resetar o tamanho da fonte');
         }
     });
+
+    $('#fontSizeInput').on('change input', function() {
+        if (!selectedElement) {
+            return;
+        }
+        let newSize = parseFloat($(this).val());
+        if (Number.isNaN(newSize)) {
+            return;
+        }
+        newSize = Math.min(Math.max(newSize, 6), 200);
+        $(this).val(newSize);
+        selectedElement.css('font-size', newSize + 'px');
+        updatePositionInfo();
+        generateSidePreviewImmediate();
+    });
     
     // Action buttons
     $('#saveBtn').on('click', savePositions);
@@ -578,16 +599,34 @@ function setupEventListeners() {
     });
 }
 
+function syncFontSizeInput() {
+    const fontInput = $('#fontSizeInput');
+    if (!selectedElement) {
+        fontInput.prop('disabled', true).val('');
+        return;
+    }
+
+    const fontSize = parseFloat(selectedElement.css('font-size')) || 0;
+    fontInput.prop('disabled', false).val(Math.round(fontSize * 10) / 10);
+}
+
 function updatePositionInfo() {
-    if (!selectedElement) return;
-    
+    if (!selectedElement) {
+        $('#positionInfo').html('Selecione um elemento para ver sua posição');
+        syncFontSizeInput();
+        return;
+    }
+
     const position = selectedElement.position();
+    const fontSize = parseFloat(selectedElement.css('font-size')) || 0;
     const info = `
         Elemento: ${selectedElement.attr('id')}<br>
         X: ${Math.round(position.left)}px<br>
-        Y: ${Math.round(position.top)}px
+        Y: ${Math.round(position.top)}px<br>
+        Fonte: ${Math.round(fontSize * 10) / 10}px
     `;
     $('#positionInfo').html(info);
+    syncFontSizeInput();
 }
 
 // Controle de zoom
@@ -803,12 +842,12 @@ function resetPositions() {
         
         // Posições padrão em percentuais (do arquivo default_certificate_layout.json)
         const defaultPositions = {
-            'studentName': { x: 50.125, y: 41.87 },
-            'listeningScore': { x: 52.25, y: 59.54 },
-            'readingScore': { x: 78.25, y: 59.36 },
-            'lfmScore': { x: 52.375, y: 64.49 },
-            'totalScore': { x: 78.25, y: 64.66 },
-            'testDate': { x: 37.125, y: 73.15 }
+            'studentName': { x: 50.125, y: 41.87, font_size: 31 },
+            'listeningScore': { x: 52.25, y: 59.54, font_size: 16 },
+            'readingScore': { x: 78.25, y: 59.36, font_size: 16 },
+            'lfmScore': { x: 52.375, y: 64.49, font_size: 16 },
+            'totalScore': { x: 78.25, y: 64.66, font_size: 16 },
+            'testDate': { x: 37.125, y: 73.15, font_size: 16 }
         };
         
         // Aplicar posições convertidas para pixels
@@ -821,6 +860,12 @@ function resetPositions() {
                 left: xPixels + 'px',
                 top: yPixels + 'px'
             });
+            if (position.font_size !== undefined) {
+                const size = parseFloat(position.font_size);
+                if (!Number.isNaN(size)) {
+                    $('#' + elementId).css('font-size', size + 'px');
+                }
+            }
         });
         
         updatePositionInfo();
@@ -895,6 +940,12 @@ function loadDefaultLayout() {
                         left: xPixels + 'px',
                         top: yPixels + 'px'
                     });
+                    if (position.font_size !== undefined) {
+                        const size = parseFloat(position.font_size);
+                        if (!Number.isNaN(size)) {
+                            element.css('font-size', size + 'px');
+                        }
+                    }
                 }
             });
             
@@ -989,6 +1040,12 @@ function loadStudentLayout(studentId) {
                             left: xPixels + 'px',
                             top: yPixels + 'px'
                         });
+                        if (position.font_size !== undefined) {
+                            const size = parseFloat(position.font_size);
+                            if (!Number.isNaN(size)) {
+                                element.css('font-size', size + 'px');
+                            }
+                        }
                     }
                 });
                 
