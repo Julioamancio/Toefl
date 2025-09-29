@@ -8,6 +8,12 @@ import io
 import json
 from datetime import datetime
 
+CANVAS_WIDTH = 800
+CANVAS_HEIGHT = 566
+IMAGE_WIDTH = 2000
+IMAGE_HEIGHT = 1414
+CANVAS_TO_IMAGE_SCALE = IMAGE_WIDTH / CANVAS_WIDTH
+
 class CertificateGenerator:
     """Gerador de certificados TOEFL Junior"""
     
@@ -22,8 +28,10 @@ class CertificateGenerator:
             if os.path.exists(self.default_layout_path):
                 with open(self.default_layout_path, 'r', encoding='utf-8') as f:
                     layout_data = json.load(f)
-                    self.default_positions = layout_data.get('positions', {})
-                    self.default_colors = layout_data.get('colors', {})
+                    raw_positions = layout_data.get('positions', {}) or {}
+                    self.raw_default_positions = raw_positions
+                    self.default_positions = self._convert_layout_positions_to_pixels(raw_positions)
+                    self.default_colors = layout_data.get('colors', {}) or {}
                     print(f"✅ Layout padrão carregado: {self.default_positions}")
             else:
                 print(f"⚠️ Arquivo de layout não encontrado: {self.default_layout_path}")
@@ -31,10 +39,10 @@ class CertificateGenerator:
         except Exception as e:
             print(f"❌ Erro ao carregar layout padrão: {e}")
             self._set_fallback_layout()
-    
+
     def _set_fallback_layout(self):
         """Define layout de fallback caso o arquivo não seja encontrado"""
-        self.default_positions = {
+        fallback_positions = {
             'studentName': {'x': 401, 'y': 237, 'font_size': 78},
             'listeningScore': {'x': 418, 'y': 337, 'font_size': 40},
             'readingScore': {'x': 626, 'y': 336, 'font_size': 40},
@@ -42,12 +50,51 @@ class CertificateGenerator:
             'totalScore': {'x': 626, 'y': 366, 'font_size': 40},
             'testDate': {'x': 297, 'y': 414, 'font_size': 40}
         }
+        self.raw_default_positions = fallback_positions
+        self.default_positions = self._convert_layout_positions_to_pixels(fallback_positions)
         self.default_colors = {
             'name_color': '#000000',
-            'scores_color': '#000000', 
+            'scores_color': '#000000',
             'date_color': '#000000'
         }
-    
+
+    def _convert_layout_positions_to_pixels(self, positions):
+        """Converte posições salvas (percentuais ou pixels) para coordenadas em pixels da imagem final."""
+        normalized = {}
+        for key, raw_pos in (positions or {}).items():
+            if not isinstance(raw_pos, dict):
+                continue
+            try:
+                x_value = float(raw_pos.get('x'))
+                y_value = float(raw_pos.get('y'))
+            except (TypeError, ValueError):
+                continue
+            font_size_value = raw_pos.get('font_size')
+            is_percentage = False
+            x = x_value
+            y = y_value
+            if -1 <= x_value <= 1 and -1 <= y_value <= 1:
+                x = x_value * IMAGE_WIDTH
+                y = y_value * IMAGE_HEIGHT
+                is_percentage = True
+            elif 0 <= x_value <= 100 and 0 <= y_value <= 100:
+                x = (x_value / 100.0) * IMAGE_WIDTH
+                y = (y_value / 100.0) * IMAGE_HEIGHT
+                is_percentage = True
+            entry = {'x': int(round(x)), 'y': int(round(y))}
+            if font_size_value is not None:
+                try:
+                    font_size_float = float(font_size_value)
+                except (TypeError, ValueError):
+                    font_size_float = None
+                if font_size_float is not None:
+                    if is_percentage:
+                        entry['font_size'] = int(round(font_size_float * CANVAS_TO_IMAGE_SCALE))
+                    else:
+                        entry['font_size'] = int(round(font_size_float))
+            normalized[key] = entry
+        return normalized
+
     def _validate_color(self, color):
         """Valida se a cor está no formato RGB correto"""
         if isinstance(color, (tuple, list)) and len(color) == 3:
@@ -178,12 +225,10 @@ class CertificateGenerator:
             self._custom_coordinates = {}
         
         # Dimensões do canvas (tamanho real de exibição)
-        CANVAS_WIDTH = 800
-        CANVAS_HEIGHT = 566
-        
+        global CANVAS_WIDTH, CANVAS_HEIGHT
+
         # Dimensões da imagem original para geração do certificado
-        IMAGE_WIDTH = 2000
-        IMAGE_HEIGHT = 1414
+        global IMAGE_WIDTH, IMAGE_HEIGHT
         
         # Atualizar coordenadas padrão
         for frontend_id, position in custom_positions.items():
@@ -201,8 +246,7 @@ class CertificateGenerator:
                 # Incluir font_size se fornecido e escalar proporcionalmente
                 if 'font_size' in position:
                     # Escalar font_size do canvas (800x566) para imagem final (2000x1414)
-                    scale_factor = IMAGE_WIDTH / CANVAS_WIDTH  # 2000 / 800 = 2.5
-                    scaled_font_size = int(position['font_size'] * scale_factor)
+                    scaled_font_size = int(position['font_size'] * CANVAS_TO_IMAGE_SCALE)
                     self._custom_coordinates[field_name]['font_size'] = scaled_font_size
                     
     def _get_coordinates(self, custom_colors=None):
@@ -222,6 +266,17 @@ class CertificateGenerator:
             'date': (0, 0, 0)           # Preto
         }
         
+        layout_default_colors = getattr(self, 'default_colors', {}) or {}
+        layout_color_map = {
+            'student_name': layout_default_colors.get('name_color'),
+            'scores': layout_default_colors.get('scores_color'),
+            'date': layout_default_colors.get('date_color')
+        }
+        for field, color_value in layout_color_map.items():
+            parsed_color = self._parse_color_input(color_value) if color_value else None
+            if parsed_color:
+                default_colors[field] = parsed_color
+
         # Processar cores personalizadas
         colors = {}
         required_fields = ['student_name', 'scores', 'date']
