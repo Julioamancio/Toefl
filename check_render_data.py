@@ -12,7 +12,9 @@ from models import db, Student, Teacher, Class, User
 def check_database_connection():
     """Verifica se a conexão com o banco está funcionando"""
     try:
-        app = create_app('production')  # Usar configuração de produção
+        # Criar aplicação (create_app retorna tupla (app, csrf))
+        app, csrf = create_app('production')
+        
         with app.app_context():
             # Tenta fazer uma query simples
             result = db.session.execute(db.text("SELECT 1")).fetchone()
@@ -25,7 +27,7 @@ def check_database_connection():
 def check_tables():
     """Verifica se as tabelas existem"""
     try:
-        app = create_app('production')  # Usar configuração de produção
+        app, csrf = create_app('production')  # Usar configuração de produção
         with app.app_context():
             # Verificar se as tabelas principais existem
             tables = ['students', 'teachers', 'classes', 'users', 'student_certificate_layouts']
@@ -46,7 +48,7 @@ def check_tables():
 def check_data_counts():
     """Verifica a quantidade de dados em cada tabela"""
     try:
-        app = create_app('production')  # Usar configuração de produção
+        app, csrf = create_app('production')  # Usar configuração de produção
         with app.app_context():
             # Contar registros usando os modelos
             student_count = Student.query.count()
@@ -73,7 +75,7 @@ def check_data_counts():
 def check_sample_data():
     """Verifica alguns dados de exemplo"""
     try:
-        app = create_app('production')  # Usar configuração de produção
+        app, csrf = create_app('production')  # Usar configuração de produção
         with app.app_context():
             # Pegar alguns estudantes de exemplo
             students = Student.query.limit(3).all()

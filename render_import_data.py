@@ -22,8 +22,8 @@ def main():
         return 1
     
     try:
-        # Criar aplicação
-        app = create_app('production')
+        # Criar aplicação (create_app retorna tupla (app, csrf))
+        app, csrf = create_app('production')
         
         with app.app_context():
             print("✅ Aplicação criada com sucesso")

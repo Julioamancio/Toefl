@@ -99,8 +99,8 @@ def main():
         print("⚠️  DATABASE_URL não definida - usando configuração padrão")
     
     try:
-        # Criar aplicação
-        app = create_app('production')
+        # Criar aplicação (create_app retorna tupla (app, csrf))
+        app, csrf = create_app('production')
         
         with app.app_context():
             print("✅ Aplicação Flask criada")
