@@ -1,18 +1,27 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-RESET PERFEITO DO BANCO DE DADOS
-Zera tudo e recria com schema correto + importação perfeita
-Baseado nas especificações exatas do usuário
+Script para executar reset perfeito do banco de dados no Render
+Recria completamente o banco com dados do backup
 """
 
 import os
 import json
-import psycopg
+import sqlite3
 from datetime import datetime
 
 def get_database_url():
     """Obtém a URL do banco de dados do ambiente"""
-    return os.environ.get('DATABASE_URL', 'postgresql://user:password@localhost:5432/toefl_db')
+    database_url = os.environ.get('DATABASE_URL')
+    if not database_url:
+        # Se não há DATABASE_URL, usar SQLite local
+        return 'sqlite:///toefl_dashboard.db'
+    return database_url
+
+def is_sqlite_database():
+    """Verifica se está usando SQLite"""
+    url = get_database_url()
+    return url.startswith('sqlite:')
 
 def drop_all_tables(cursor):
     """Remove todas as tabelas existentes"""
@@ -365,52 +374,100 @@ def perfect_reset():
     print("🚀 INICIANDO RESET PERFEITO DO BANCO DE DADOS")
     print("=" * 60)
     
-    # Conecta ao banco
-    conn = psycopg.connect(get_database_url())
-    cursor = conn.cursor()
-    
+    # Usar Flask app para reset em vez de conexão direta
     try:
-        # 1. Remove tudo
-        drop_all_tables(cursor)
-        conn.commit()
+        from app import create_app
+        from models import db
         
-        # 2. Cria schema perfeito
-        create_perfect_schema(cursor)
-        conn.commit()
+        # Criar aplicação Flask
+        app, csrf = create_app()
         
-        # 3. Cria admin
-        create_admin_user(cursor)
-        conn.commit()
+        with app.app_context():
+            print("🗑️ Removendo todas as tabelas...")
+            db.drop_all()
+            
+            print("🏗️ Criando schema do banco...")
+            db.create_all()
+            
+            print("👤 Criando usuário admin...")
+            create_admin_user()
+            
+            print("📥 Importando dados do backup...")
+            success = import_backup_data()
+            
+            if success:
+                print("✅ RESET PERFEITO CONCLUÍDO COM SUCESSO!")
+                print("🎉 Banco de dados recriado e dados importados!")
+                return True
+            else:
+                print("❌ Erro durante a importação dos dados")
+                return False
+    except Exception as e:
+        print(f"❌ ERRO DURANTE O RESET: {e}")
+        return False
+
+def create_admin_user():
+    """Cria usuário admin usando Flask models"""
+    from models import User, db
+    from datetime import datetime
+    
+    # Verificar se admin já existe
+    existing_admin = User.query.filter_by(username='admin').first()
+    if existing_admin:
+        print("ℹ️ Usuário admin já existe")
+        return
+    
+    # Criar novo admin
+    admin = User(
+        username='admin',
+        email='admin@toefl.com',
+        is_admin=True,
+        is_active=True,
+        created_at=datetime.utcnow()
+    )
+    admin.set_password('admin123')
+    
+    db.session.add(admin)
+    db.session.commit()
+    print("✅ Usuário admin criado com sucesso")
+
+def import_backup_data():
+    """Importa dados do backup usando o sistema existente"""
+    try:
+        # Procurar arquivo de backup mais recente
+        backup_files = []
+        if os.path.exists('backups'):
+            for file in os.listdir('backups'):
+                if file.endswith('.json'):
+                    backup_files.append(os.path.join('backups', file))
         
-        # 4. Importa dados na ordem perfeita
-        import_perfect_data(cursor)
-        conn.commit()
+        if not backup_files:
+            print("⚠️ Nenhum arquivo de backup encontrado")
+            return True  # Não é erro crítico
         
-        # 5. Cria layout padrão
-        create_default_certificate_layout(cursor)
-        conn.commit()
+        # Usar o backup mais recente
+        latest_backup = max(backup_files, key=os.path.getmtime)
+        print(f"📂 Usando backup: {latest_backup}")
         
-        # 6. Verifica resultado
-        is_perfect = verify_perfect_import(cursor)
+        # Importar usando o sistema existente
+        from database_backup import import_data_json
+        result = import_data_json(latest_backup)
         
-        if is_perfect:
-            print("=" * 60)
-            print("🎉 RESET PERFEITO CONCLUÍDO COM SUCESSO!")
-            print("✅ Banco de dados limpo e funcional")
-            print("✅ Todos os dados importados corretamente")
-            print("✅ Integridade referencial garantida")
-            print("✅ Aplicação pronta para uso no Render!")
-            print("=" * 60)
+        if result.get('success', False):
+            print("✅ Dados importados com sucesso")
+            return True
         else:
-            print("⚠️ Reset concluído com algumas inconsistências")
+            print(f"❌ Erro na importação: {result.get('message', 'Erro desconhecido')}")
+            return False
             
     except Exception as e:
-        print(f"❌ Erro durante reset: {e}")
-        conn.rollback()
-        raise
-    finally:
-        cursor.close()
-        conn.close()
+        print(f"❌ Erro durante importação: {e}")
+        return False
 
 if __name__ == "__main__":
-    perfect_reset()
+    success = perfect_reset()
+    if success:
+        print("🎉 Reset perfeito concluído com sucesso!")
+    else:
+        print("❌ Reset falhou")
+        exit(1)

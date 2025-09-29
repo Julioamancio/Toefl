@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 import io
 import csv
 from config import config
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
 from PIL import Image, ImageDraw, ImageFont
 from functools import lru_cache
 
@@ -84,6 +84,13 @@ def create_app(config_name=None):
                     print(f"⚠️ Erro ao criar usuário admin: {admin_error}")
             else:
                 print(f"ℹ️ Usuário admin já existe: {admin_user}")
+            try:
+                promoted_total = promote_a1_levels_to_a2()
+                if promoted_total:
+                    print(f"Ajustados {promoted_total} campos CEFR de A1 para A2")
+            except Exception as promote_error:
+                print(f"Aviso: nao foi possivel ajustar niveis A1 -> A2 automaticamente: {promote_error}")
+
         except Exception as e:
             print(f"❌ Erro ao criar tabelas: {e}")
             
@@ -543,9 +550,8 @@ def create_app(config_name=None):
         @app.route('/upload-backup', methods=['POST'])
         @login_required
         def upload_backup():
-            # Implementação básica de upload de backup
-            flash('Funcionalidade de upload de backup em desenvolvimento.', 'info')
-            return redirect(url_for('dashboard'))
+            # Redirecionar para a nova funcionalidade de restore-backup
+            return redirect(url_for('restore_backup'))
 
         @app.route('/certificate/editor')
         @login_required
@@ -1133,6 +1139,135 @@ def create_app(config_name=None):
             except Exception as e:
                 return jsonify({'success': False, 'message': f'Erro ao criar backup: {str(e)}'}), 500
 
+        @app.route('/admin/restore-backup', methods=['GET', 'POST'])
+        @login_required
+        def restore_backup():
+            """Restaurar backup do banco de dados"""
+            if request.method == 'GET':
+                # Se for GET, redirecionar para o admin
+                return redirect(url_for('admin'))
+                
+            try:
+                # Verificar se foi enviado um arquivo
+                if 'backup_file' not in request.files:
+                    return jsonify({'success': False, 'message': 'Nenhum arquivo foi selecionado'}), 400
+                
+                file = request.files['backup_file']
+                if file.filename == '':
+                    return jsonify({'success': False, 'message': 'Nenhum arquivo foi selecionado'}), 400
+                
+                # Verificar se é um arquivo JSON
+                if not file.filename.lower().endswith('.json'):
+                    return jsonify({'success': False, 'message': 'Apenas arquivos JSON são aceitos'}), 400
+                
+                # Salvar arquivo temporariamente
+                import tempfile
+                import os
+                import json
+                
+                with tempfile.NamedTemporaryFile(mode='w+', suffix='.json', delete=False) as temp_file:
+                    # Ler e validar JSON
+                    try:
+                        file_content = file.read().decode('utf-8')
+                        backup_data = json.loads(file_content)
+                        
+                        # Validar estrutura básica do backup
+                        required_keys = ['teachers', 'classes', 'students']
+                        if not all(key in backup_data for key in required_keys):
+                            return jsonify({'success': False, 'message': 'Arquivo de backup inválido. Estrutura incorreta.'}), 400
+                        
+                        # Escrever dados validados no arquivo temporário
+                        json.dump(backup_data, temp_file, indent=2, ensure_ascii=False)
+                        temp_filename = temp_file.name
+                    
+                    except json.JSONDecodeError:
+                        return jsonify({'success': False, 'message': 'Arquivo JSON inválido'}), 400
+                    except Exception as e:
+                        return jsonify({'success': False, 'message': f'Erro ao processar arquivo: {str(e)}'}), 400
+                
+                # Importar dados usando o script existente
+                try:
+                    from restore_backup import import_data_json
+                    
+                    # Executar importação
+                    result = import_data_json(temp_filename)
+                    
+                    # Limpar arquivo temporário
+                    os.unlink(temp_filename)
+                    
+                    try:
+                        promoted_total = promote_a1_levels_to_a2()
+                    except Exception as promote_error:
+                        promoted_total = 0
+                        print(f"Aviso: falha ao ajustar niveis A1 -> A2 apos restore: {promote_error}")
+
+                    details = dict(result.get('details', {}) or {})
+                    if promoted_total:
+                        details['cefr_a1_promoted_to_a2'] = promoted_total
+
+                    success_message = 'Backup restaurado com sucesso!'
+                    result_message = result.get('message')
+                    if result_message:
+                        success_message += f" {result_message}"
+                    if promoted_total:
+                        success_message += f" Ajustados {promoted_total} campos A1 -> A2."
+
+                    if result.get('success', False):
+                        return jsonify({
+                            'success': True,
+                            'message': success_message.strip(),
+                            'details': details
+                        })
+                    else:
+                        error_message = result.get('message', 'Erro desconhecido')
+                        return jsonify({
+                            'success': False,
+                            'message': f'Erro ao restaurar backup: {error_message}'
+                        }), 500
+                
+                except ImportError:
+                    # Se não tiver o script restore_backup, usar método alternativo
+                    from database_backup import import_data_json
+                    
+                    # Executar importação
+                    import_data_json(temp_filename)
+
+                    try:
+                        promoted_total = promote_a1_levels_to_a2()
+                    except Exception as promote_error:
+                        promoted_total = 0
+                        print(f"Aviso: falha ao ajustar niveis A1 -> A2 apos restore (fallback): {promote_error}")
+
+                    # Limpar arquivo temporario
+                    os.unlink(temp_filename)
+
+                    success_message = 'Backup restaurado com sucesso!'
+                    if promoted_total:
+                        success_message += f" Ajustados {promoted_total} campos A1 -> A2."
+
+                    response = {
+                        'success': True,
+                        'message': success_message.strip()
+                    }
+
+                    if promoted_total:
+                        response['details'] = {'cefr_a1_promoted_to_a2': promoted_total}
+
+                    return jsonify(response)
+                
+                except Exception as e:
+                    # Limpar arquivo temporário em caso de erro
+                    if 'temp_filename' in locals():
+                        try:
+                            os.unlink(temp_filename)
+                        except:
+                            pass
+                    
+                    return jsonify({'success': False, 'message': f'Erro ao restaurar backup: {str(e)}'}), 500
+            
+            except Exception as e:
+                return jsonify({'success': False, 'message': f'Erro interno: {str(e)}'}), 500
+
         @app.route('/admin/auto-fix', methods=['POST'])
         @login_required
         def auto_fix():
@@ -1328,6 +1463,54 @@ def create_app(config_name=None):
                 return jsonify({'error': f'Erro ao limpar cache: {str(e)}'}), 500
 
         return app, csrf
+
+
+
+
+def promote_a1_levels_to_a2():
+    """Ensure all CEFR values stored as A1 are promoted to A2."""
+    from models import db, Student, ComputedLevel
+
+    total_updates = 0
+
+    try:
+        student_columns = (
+            Student.list_cefr,
+            Student.lfm_cefr,
+            Student.read_cefr,
+            Student.cefr_geral,
+        )
+
+        for column in student_columns:
+            updates = Student.query.filter(column == 'A1').update(
+                {column: 'A2'},
+                synchronize_session=False,
+            )
+            if updates:
+                total_updates += updates
+
+        computed_columns = (
+            ComputedLevel.listening_level,
+            ComputedLevel.lfm_level,
+            ComputedLevel.reading_level,
+            ComputedLevel.overall_level,
+        )
+
+        for column in computed_columns:
+            updates = ComputedLevel.query.filter(column == 'A1').update(
+                {column: 'A2'},
+                synchronize_session=False,
+            )
+            if updates:
+                total_updates += updates
+
+        if total_updates:
+            db.session.commit()
+
+        return total_updates
+    except Exception:
+        db.session.rollback()
+        raise
 
 def calculate_cefr_level(total_score):
     """Calcula o nível CEFR baseado na pontuação total"""

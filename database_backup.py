@@ -7,8 +7,15 @@ import json
 import argparse
 import os
 from datetime import datetime
-from app import create_app
+from app import create_app, promote_a1_levels_to_a2
 from models import db, Student, Teacher, Class, User, ComputedLevel
+
+
+def normalize_cefr_value(value):
+    """Promove niveis A1 para A2 ao importar backups."""
+    if value == 'A1':
+        return 'A2'
+    return value
 
 def export_data_json(filename=None):
     """
@@ -212,10 +219,10 @@ def import_data_json(filename):
                     reading=student_data.get('reading'),
                     total=student_data.get('total'),
                     lexile=student_data.get('lexile'),
-                    list_cefr=student_data.get('list_cefr'),
-                    lfm_cefr=student_data.get('lfm_cefr'),
-                    read_cefr=student_data.get('read_cefr'),
-                    cefr_geral=student_data.get('cefr_geral'),
+                    list_cefr=normalize_cefr_value(student_data.get('list_cefr')),
+                    lfm_cefr=normalize_cefr_value(student_data.get('lfm_cefr')),
+                    read_cefr=normalize_cefr_value(student_data.get('read_cefr')),
+                    cefr_geral=normalize_cefr_value(student_data.get('cefr_geral')),
                     listening_csa_points=student_data.get('listening_csa_points'),
                     turma_meta=student_data.get('turma_meta'),
                     created_at=created_at,
@@ -229,10 +236,10 @@ def import_data_json(filename):
                 level = ComputedLevel(
                     id=level_data['id'],
                     student_id=level_data['student_id'],
-                    reading_level=level_data.get('reading_level'),
-                    listening_level=level_data.get('listening_level'),
-                    lfm_level=level_data.get('lfm_level'),
-                    overall_level=level_data.get('overall_level')
+                    reading_level=normalize_cefr_value(level_data.get('reading_level')),
+                    listening_level=normalize_cefr_value(level_data.get('listening_level')),
+                    lfm_level=normalize_cefr_value(level_data.get('lfm_level')),
+                    overall_level=normalize_cefr_value(level_data.get('overall_level'))
                 )
                 if level_data.get('created_at'):
                     level.created_at = datetime.fromisoformat(level_data['created_at'])
@@ -241,6 +248,15 @@ def import_data_json(filename):
                 db.session.add(level)
             
             db.session.commit()
+
+            promoted_total = 0
+            try:
+                promoted_total = promote_a1_levels_to_a2()
+                if promoted_total:
+                    print(f"   - Ajustados {promoted_total} campos CEFR de A1 para A2")
+            except Exception as promote_error:
+                print(f"Aviso: falha ao ajustar niveis A1 -> A2 durante import: {promote_error}")
+
             
             print("✅ Importação concluída com sucesso!")
             print(f"   - {len(data.get('students', []))} estudantes")
@@ -248,10 +264,29 @@ def import_data_json(filename):
             print(f"   - {len(data.get('classes', []))} turmas")
             print(f"   - {len(data.get('computed_levels', []))} níveis computados")
             
+            details = {
+                'students': len(data.get('students', [])),
+                'teachers': len(data.get('teachers', [])),
+                'classes': len(data.get('classes', [])),
+                'computed_levels': len(data.get('computed_levels', [])),
+            }
+
+            if promoted_total:
+                details['cefr_a1_promoted_to_a2'] = promoted_total
+
+            return {
+                'success': True,
+                'message': 'Importacao concluida com sucesso',
+                'details': details
+            }
+            
         except Exception as e:
             db.session.rollback()
             print(f"❌ Erro durante a importação: {e}")
-            raise
+            return {
+                'success': False,
+                'message': f'Erro durante a importação: {e}'
+            }
 
 def main():
     """Função principal para linha de comando"""

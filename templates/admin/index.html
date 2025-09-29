@@ -466,6 +466,65 @@
         </div>
     </div>
 </div>
+
+<!-- Modal de Restaurar Backup -->
+<div class="modal fade" id="restoreBackupModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-upload me-2"></i>Restaurar Backup
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning" role="alert">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Atenção!</strong> Esta ação irá substituir todos os dados atuais pelos dados do backup selecionado.
+                </div>
+                
+                <form id="restoreBackupForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="backupFile" class="form-label">
+                            <i class="bi bi-file-earmark-text me-1"></i>Selecionar Arquivo de Backup
+                        </label>
+                        <input type="file" class="form-control" id="backupFile" name="backup_file" accept=".json" required>
+                        <div class="form-text">
+                            Apenas arquivos JSON são aceitos. Tamanho máximo: 50MB
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6><i class="bi bi-info-circle me-1"></i>O que será restaurado:</h6>
+                        <ul class="list-unstyled ms-3">
+                            <li><i class="bi bi-check-circle text-success me-1"></i>Professores</li>
+                            <li><i class="bi bi-check-circle text-success me-1"></i>Turmas</li>
+                            <li><i class="bi bi-check-circle text-success me-1"></i>Estudantes</li>
+                            <li><i class="bi bi-check-circle text-success me-1"></i>Configurações</li>
+                        </ul>
+                    </div>
+                </form>
+                
+                <!-- Progress Bar -->
+                <div id="restoreProgress" class="progress mb-3" style="display: none;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" style="width: 100%">
+                        Restaurando backup...
+                    </div>
+                </div>
+                
+                <!-- Result Message -->
+                <div id="restoreResult" style="display: none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="restoreBtn" onclick="executeRestore()">
+                    <i class="bi bi-upload me-1"></i>Restaurar Backup
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -477,19 +536,29 @@ document.addEventListener('DOMContentLoaded', function() {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
     
-    // Resetar modal ao fechar
-    document.getElementById('createUserModal').addEventListener('hidden.bs.modal', function() {
-        resetUserModal();
-    });
+    // Resetar modal ao fechar - verificar se existe
+    const createUserModal = document.getElementById('createUserModal');
+    if (createUserModal) {
+        createUserModal.addEventListener('hidden.bs.modal', function() {
+            resetUserModal();
+        });
+    }
 });
 
 // Função para resetar o modal de usuário
 function resetUserModal() {
-    document.getElementById('userModalTitle').textContent = 'Novo Usuário';
-    document.getElementById('userSubmitBtn').innerHTML = '<i class="bi bi-check-circle me-1"></i>Criar Usuário';
-    document.getElementById('userForm').action = '{{ url_for("create_user") }}';
-    document.getElementById('userForm').reset();
-    document.getElementById('passwordField').style.display = 'block';
+    const userModalTitle = document.getElementById('userModalTitle');
+    const userSubmitBtn = document.getElementById('userSubmitBtn');
+    const userForm = document.getElementById('userForm');
+    const passwordField = document.getElementById('passwordField');
+    
+    if (userModalTitle) userModalTitle.textContent = 'Novo Usuário';
+    if (userSubmitBtn) userSubmitBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Criar Usuário';
+    if (userForm) {
+        userForm.action = '{{ url_for("create_user") }}';
+        userForm.reset();
+    }
+    if (passwordField) passwordField.style.display = 'block';
     
     // Remover classes de erro
     const inputs = document.querySelectorAll('.is-invalid');
@@ -502,20 +571,32 @@ function resetUserModal() {
 
 // Função para editar usuário
 function editUser(id, username, email, isAdmin, isActive) {
-    document.getElementById('userModalTitle').textContent = 'Editar Usuário';
-    document.getElementById('userSubmitBtn').innerHTML = '<i class="bi bi-check-circle me-1"></i>Salvar Alterações';
-    document.getElementById('userForm').action = `/admin/users/${id}/edit`;
-    document.getElementById('passwordField').style.display = 'none';
+    const userModalTitle = document.getElementById('userModalTitle');
+    const userSubmitBtn = document.getElementById('userSubmitBtn');
+    const userForm = document.getElementById('userForm');
+    const passwordField = document.getElementById('passwordField');
+    const usernameField = document.getElementById('username');
+    const emailField = document.getElementById('email');
+    const isAdminField = document.getElementById('is_admin');
+    const isActiveField = document.getElementById('is_active');
+    
+    if (userModalTitle) userModalTitle.textContent = 'Editar Usuário';
+    if (userSubmitBtn) userSubmitBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Salvar Alterações';
+    if (userForm) userForm.action = `/admin/users/${id}/edit`;
+    if (passwordField) passwordField.style.display = 'none';
     
     // Preencher campos
-    document.getElementById('username').value = username;
-    document.getElementById('email').value = email;
-    document.getElementById('is_admin').checked = isAdmin;
-    document.getElementById('is_active').checked = isActive;
+    if (usernameField) usernameField.value = username;
+    if (emailField) emailField.value = email;
+    if (isAdminField) isAdminField.checked = isAdmin;
+    if (isActiveField) isActiveField.checked = isActive;
     
     // Mostrar modal
-    const modal = new bootstrap.Modal(document.getElementById('createUserModal'));
-    modal.show();
+    const createUserModal = document.getElementById('createUserModal');
+    if (createUserModal) {
+        const modal = new bootstrap.Modal(createUserModal);
+        modal.show();
+    }
 }
 
 // Função para alternar status do usuário
@@ -678,7 +759,87 @@ function createBackup() {
 
 // Função para mostrar modal de restauração
 function showRestoreModal() {
-    alert('Funcionalidade de restauração será implementada em breve.\n\nPor enquanto, use o script render_backup_import.py para importar backups.');
+    const modal = new bootstrap.Modal(document.getElementById('restoreBackupModal'));
+    modal.show();
+}
+
+// Função para executar restauração de backup
+function executeRestore() {
+    const fileInput = document.getElementById('backupFile');
+    const restoreBtn = document.getElementById('restoreBtn');
+    const progressDiv = document.getElementById('restoreProgress');
+    const resultDiv = document.getElementById('restoreResult');
+    
+    // Verificar se um arquivo foi selecionado
+    if (!fileInput.files || fileInput.files.length === 0) {
+        showAlert('Por favor, selecione um arquivo de backup.', 'warning', resultDiv);
+        return;
+    }
+    
+    const file = fileInput.files[0];
+    
+    // Verificar tamanho do arquivo (50MB max)
+    if (file.size > 50 * 1024 * 1024) {
+        showAlert('Arquivo muito grande. Tamanho máximo: 50MB', 'danger', resultDiv);
+        return;
+    }
+    
+    // Confirmar ação
+    if (!confirm('Tem certeza que deseja restaurar este backup?\n\nTodos os dados atuais serão substituídos!')) {
+        return;
+    }
+    
+    // Preparar FormData
+    const formData = new FormData();
+    formData.append('backup_file', file);
+    
+    // Mostrar progresso
+    restoreBtn.disabled = true;
+    restoreBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Restaurando...';
+    progressDiv.style.display = 'block';
+    resultDiv.style.display = 'none';
+    
+    // Executar upload e restauração
+    fetch('/admin/restore-backup', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        progressDiv.style.display = 'none';
+        
+        if (data.success) {
+            showAlert(`✅ ${data.message}`, 'success', resultDiv);
+            
+            // Fechar modal após 2 segundos e recarregar página
+            setTimeout(() => {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('restoreBackupModal'));
+                modal.hide();
+                location.reload();
+            }, 2000);
+        } else {
+            showAlert(`❌ ${data.message}`, 'danger', resultDiv);
+        }
+    })
+    .catch(error => {
+        progressDiv.style.display = 'none';
+        showAlert(`❌ Erro ao restaurar backup: ${error.message}`, 'danger', resultDiv);
+    })
+    .finally(() => {
+        restoreBtn.disabled = false;
+        restoreBtn.innerHTML = '<i class="bi bi-upload me-1"></i>Restaurar Backup';
+    });
+}
+
+// Função auxiliar para mostrar alertas
+function showAlert(message, type, container) {
+    container.innerHTML = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    container.style.display = 'block';
 }
 
 // Função para executar correção automática
