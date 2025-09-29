@@ -10,6 +10,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import io
 import csv
+import re
 from config import config
 from sqlalchemy import inspect, text
 from PIL import Image, ImageDraw, ImageFont
@@ -286,6 +287,38 @@ def create_app(config_name=None):
             search = request.args.get('search', '')
             sort = request.args.get('sort', 'name')
             
+            def apply_name_search(base_query):
+                if not search:
+                    return base_query
+                normalized = search.replace('\n', ',').replace(';', ',')
+                search_terms = [term.strip() for term in normalized.split(',') if term.strip()]
+                if not search_terms:
+                    return base_query
+                conditions = []
+                for term in search_terms:
+                    tokens = []
+                    for token in term.split():
+                        cleaned = re.sub(r'[^\w]', '', token, flags=re.UNICODE)
+                        if cleaned:
+                            tokens.append(cleaned.lower())
+                    if not tokens:
+                        continue
+                    token_conditions = [db.func.lower(Student.name).like(f'%{token}%') for token in tokens]
+                    term_conditions = []
+                    if token_conditions:
+                        term_conditions.append(db.and_(*token_conditions))
+                        forward_pattern = ' '.join(tokens)
+                        term_conditions.append(db.func.lower(Student.name).like(f'%{forward_pattern}%'))
+                        if len(tokens) > 1:
+                            reverse_pattern = ' '.join(reversed(tokens))
+                            if reverse_pattern != forward_pattern:
+                                term_conditions.append(db.func.lower(Student.name).like(f'%{reverse_pattern}%'))
+                    if term_conditions:
+                        conditions.append(db.or_(*term_conditions))
+                if conditions:
+                    base_query = base_query.filter(db.or_(*conditions))
+                return base_query
+
             # Query base - incluir ComputedLevel para filtro CEFR consistente
             query = Student.query.join(ComputedLevel, Student.id == ComputedLevel.student_id, isouter=True)
             
@@ -297,14 +330,7 @@ def create_app(config_name=None):
             if cefr_filter:
                 # Usar ComputedLevel.overall_level para consistência com a API
                 query = query.filter(ComputedLevel.overall_level == cefr_filter.strip())
-            if search:
-                # Busca por múltiplos nomes separados por vírgula ou quebra de linha
-                search_terms = [term.strip() for term in search.replace('\n', ',').split(',') if term.strip()]
-                if search_terms:
-                    search_conditions = []
-                    for term in search_terms:
-                        search_conditions.append(Student.name.contains(term))
-                    query = query.filter(db.or_(*search_conditions))
+            query = apply_name_search(query)
             
             # Aplicar ordenação
             if sort == 'name':
@@ -353,13 +379,7 @@ def create_app(config_name=None):
                 filtered_query = filtered_query.filter(Student.teacher_id == teacher_filter)
             if cefr_filter:
                 filtered_query = filtered_query.filter(ComputedLevel.overall_level == cefr_filter.strip())
-            if search:
-                search_terms = [term.strip() for term in search.replace('\n', ',').split(',') if term.strip()]
-                if search_terms:
-                    search_conditions = []
-                    for term in search_terms:
-                        search_conditions.append(Student.name.contains(term))
-                    filtered_query = filtered_query.filter(db.or_(*search_conditions))
+            filtered_query = apply_name_search(filtered_query)
             
             # Contar alunos filtrados
             total_students_filtered = filtered_query.count()
