@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, send_file, after_this_request
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, send_file, after_this_request, current_app
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_wtf.csrf import CSRFProtect
@@ -11,6 +11,9 @@ from datetime import datetime, timedelta
 import io
 import csv
 import re
+import logging
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 from config import config
 from sqlalchemy import inspect, text
 from PIL import Image, ImageDraw, ImageFont
@@ -18,8 +21,29 @@ from functools import lru_cache
 
 def create_app(config_name=None):
     """Factory function para criar a aplicação Flask"""
+
     app = Flask(__name__)
     
+    # Configure certificate logger
+    log_dir = Path(app.root_path) / 'logs'
+    log_dir.mkdir(exist_ok=True)
+    log_file = log_dir / 'certificate_debug.log'
+
+    logger = logging.getLogger('certificate')
+    if not logger.handlers:
+        handler = RotatingFileHandler(
+            log_file,
+            maxBytes=1_048_576,
+            backupCount=5,
+            encoding='utf-8'
+        )
+        formatter = logging.Formatter('[%(asctime)s] %(levelname)s: %(message)s')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+        logger.propagate = False
+    app.config['CERTIFICATE_LOGGER'] = logger
+
     # Configuração
     if config_name is None:
         config_name = os.getenv('FLASK_ENV', 'development')
@@ -704,7 +728,9 @@ def create_app(config_name=None):
                 student_id = data.get('student_id')
                 custom_colors = data.get('colors', {})
                 custom_positions = data.get('positions', {})
-                print('DOWNLOAD CERT positions', custom_positions)
+                logger = current_app.config.get('CERTIFICATE_LOGGER')
+                if logger:
+                    logger.info('download requested', extra={'student_id': student_id, 'positions': custom_positions, 'colors': custom_colors})
                 
                 if not student_id:
                     return jsonify({'error': 'ID do estudante é obrigatório'}), 400
@@ -959,6 +985,9 @@ def create_app(config_name=None):
         def save_certificate_positions():
             try:
                 data = request.get_json()
+                logger = current_app.config.get('CERTIFICATE_LOGGER')
+                if logger:
+                    logger.info('save positions', extra={'student_id': student_id, 'positions': positions, 'colors': colors, 'certificate_date': certificate_date})
                 print(f"🔍 Dados recebidos: {data}")
                 
                 student_id = data.get('student_id')
@@ -1013,6 +1042,9 @@ def create_app(config_name=None):
         def save_certificate_colors():
             try:
                 data = request.get_json()
+                logger = current_app.config.get('CERTIFICATE_LOGGER')
+                if logger:
+                    logger.info('save colors', extra={'student_id': student_id, 'colors': colors})
                 student_id = data.get('student_id')
                 colors = data.get('colors')
                 

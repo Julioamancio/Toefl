@@ -6,6 +6,7 @@ from PIL import Image, ImageDraw, ImageFont
 import os
 import io
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
 
@@ -16,6 +17,8 @@ CANVAS_HEIGHT = 566
 IMAGE_WIDTH = 2000
 IMAGE_HEIGHT = 1414
 CANVAS_TO_IMAGE_SCALE = IMAGE_WIDTH / CANVAS_WIDTH
+
+logger = logging.getLogger('certificate')
 
 class CertificateGenerator:
     """Gerador de certificados TOEFL Junior"""
@@ -35,12 +38,12 @@ class CertificateGenerator:
                     self.raw_default_positions = raw_positions
                     self.default_positions = self._convert_layout_positions_to_pixels(raw_positions)
                     self.default_colors = layout_data.get('colors', {}) or {}
-                    print(f'Layout padrão carregado: {self.default_positions}')
+                    logger.info('layout loaded', extra={'positions': self.default_positions})
             else:
-                print(f'Arquivo de layout não encontrado: {self.default_layout_path}')
+                logger.warning('layout file missing', extra={'path': str(self.default_layout_path)})
                 self._set_fallback_layout()
         except Exception as e:
-            print(f'Erro ao carregar layout padrão: {e}')
+            logger.exception('failed to load layout: %s', e)
             self._set_fallback_layout()
 
     def _set_fallback_layout(self):
@@ -202,7 +205,7 @@ class CertificateGenerator:
         return None
     
     def _update_coordinates(self, custom_positions):
-        print('CERT GENERATOR: applying custom positions', custom_positions)
+        logger.debug('applying custom positions', extra={'positions': custom_positions})
         """
         Atualiza as coordenadas padrão com posições personalizadas
         
@@ -237,7 +240,7 @@ class CertificateGenerator:
         # Atualizar coordenadas padrão
         for frontend_id, position in custom_positions.items():
             if frontend_id in field_mapping:
-                print(f"  - field {frontend_id}: {position}")
+                logger.debug('field update', extra={'field': frontend_id, 'position': position})
                 field_name = field_mapping[frontend_id]
                 
                 # Converter percentuais para pixels usando as dimensões da imagem final
@@ -499,7 +502,7 @@ class CertificateGenerator:
             certificate.save(output_path, format=format, quality=95)
             return True
         except Exception as e:
-            print(f"Erro ao salvar certificado: {e}")
+            logger.exception('error saving certificate: %s', e)
             return False
 
     def set_default_colors(self, student_name_color=None, scores_color=None, date_color=None):
@@ -541,10 +544,10 @@ def create_certificate_for_student(student, custom_colors=None, custom_positions
     
     # Se posições personalizadas foram fornecidas, atualizar as coordenadas
     if custom_positions:
-        print('CERT: received custom positions', custom_positions)
+        logger.info('custom positions received', extra={'positions': custom_positions})
         generator._update_coordinates(custom_positions)
     else:
-        print('CERT: using default positions only')
+        logger.info('using default positions only')
     
     # Usar data personalizada se fornecida, senão usar data atual
     test_date = custom_date if custom_date else datetime.now().strftime("%d/%m/%Y")
