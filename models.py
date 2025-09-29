@@ -230,6 +230,37 @@ class ComputedLevel(db.Model):
     def __repr__(self):
         return f'<ComputedLevel for Student {self.student_id}>'
 
+class CertificateLayout(db.Model):
+    __tablename__ = 'certificate_layouts'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, default='default')
+    positions = db.Column(db.Text, nullable=False)  # JSON string com posições
+    colors = db.Column(db.Text, nullable=True)  # JSON string com cores
+    is_default = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<CertificateLayout {self.name}>'
+
+class StudentCertificateLayout(db.Model):
+    __tablename__ = 'student_certificate_layouts'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id', ondelete='CASCADE'), nullable=False)
+    positions = db.Column(db.Text, nullable=False)  # JSON string com posições
+    colors = db.Column(db.Text, nullable=True)  # JSON string com cores
+    certificate_date = db.Column(db.String(20), nullable=True)  # Data personalizada do certificado
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relacionamento
+    student = db.relationship('Student', backref=db.backref('certificate_layout', uselist=False), uselist=False, passive_deletes=True)
+    
+    def __repr__(self):
+        return f'<StudentCertificateLayout for Student {self.student_id}>'
+
 # Mapeamento de níveis escolares
 SCHOOL_LEVEL_MAP = {
     6.1: 'A1',

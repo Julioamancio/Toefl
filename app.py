@@ -4,6 +4,7 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from flask_wtf.csrf import CSRFProtect
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
+from werkzeug.urls import url_parse
 import os
 import pandas as pd
 from datetime import datetime, timedelta
@@ -562,6 +563,7 @@ def create_app(config_name=None):
         def download_certificate():
             try:
                 from services.certificate_generator import create_certificate_for_student
+                from models import StudentCertificateLayout
                 
                 data = request.get_json()
                 student_id = data.get('student_id')
@@ -573,11 +575,18 @@ def create_app(config_name=None):
                 
                 student = Student.query.get_or_404(student_id)
                 
-                # Gerar certificado
+                # Buscar data personalizada salva no banco
+                student_layout = StudentCertificateLayout.query.filter_by(student_id=student_id).first()
+                custom_date = None
+                if student_layout and student_layout.certificate_date:
+                    custom_date = student_layout.certificate_date
+                
+                # Gerar certificado com data personalizada
                 certificate_buffer = create_certificate_for_student(
                     student, 
                     custom_colors=custom_colors,
-                    custom_positions=custom_positions
+                    custom_positions=custom_positions,
+                    custom_date=custom_date
                 )
                 
                 # Preparar nome do arquivo
@@ -597,29 +606,54 @@ def create_app(config_name=None):
         @login_required
         def preview_certificate():
             try:
+                print("🔍 PREVIEW: Iniciando geração de preview...")
+                
                 from services.certificate_generator import create_certificate_for_student
+                from models import StudentCertificateLayout
                 import base64
                 
                 data = request.get_json()
+                print(f"🔍 PREVIEW: Dados recebidos: {data}")
+                
                 student_id = data.get('student_id')
                 custom_colors = data.get('colors', {})
                 custom_positions = data.get('positions', {})
                 
+                print(f"🔍 PREVIEW: student_id={student_id}, colors={custom_colors}, positions={custom_positions}")
+                
                 if not student_id:
+                    print("❌ PREVIEW: ID do estudante não fornecido")
                     return jsonify({'error': 'ID do estudante é obrigatório'}), 400
                 
+                print(f"🔍 PREVIEW: Buscando estudante ID {student_id}...")
                 student = Student.query.get_or_404(student_id)
+                print(f"✅ PREVIEW: Estudante encontrado: {student.name}")
                 
-                # Gerar certificado
+                # Buscar data personalizada salva no banco
+                print(f"🔍 PREVIEW: Buscando layout personalizado...")
+                student_layout = StudentCertificateLayout.query.filter_by(student_id=student_id).first()
+                custom_date = None
+                if student_layout and student_layout.certificate_date:
+                    custom_date = student_layout.certificate_date
+                    print(f"✅ PREVIEW: Data personalizada encontrada: {custom_date}")
+                else:
+                    print("ℹ️ PREVIEW: Nenhuma data personalizada, usando data atual")
+                
+                # Gerar certificado com data personalizada
+                print(f"🔍 PREVIEW: Gerando certificado...")
                 certificate_buffer = create_certificate_for_student(
                     student, 
                     custom_colors=custom_colors,
-                    custom_positions=custom_positions
+                    custom_positions=custom_positions,
+                    custom_date=custom_date
                 )
+                print(f"✅ PREVIEW: Certificado gerado com sucesso")
                 
                 # Converter para base64 para enviar como JSON
+                print(f"🔍 PREVIEW: Convertendo para base64...")
                 certificate_buffer.seek(0)
                 img_base64 = base64.b64encode(certificate_buffer.read()).decode('utf-8')
+                print(f"✅ PREVIEW: Conversão base64 concluída (tamanho: {len(img_base64)} chars)")
                 
                 return jsonify({
                     'success': True,
@@ -627,6 +661,9 @@ def create_app(config_name=None):
                 })
                 
             except Exception as e:
+                print(f"❌ PREVIEW: ERRO DETALHADO: {str(e)}")
+                import traceback
+                print(f"❌ PREVIEW: TRACEBACK: {traceback.format_exc()}")
                 return jsonify({'error': f'Erro ao gerar preview: {str(e)}'}), 500
 
         @app.route('/api/certificate/load-positions')
@@ -637,7 +674,22 @@ def create_app(config_name=None):
                 if not student_id:
                     return jsonify({'error': 'ID do estudante é obrigatório'}), 400
                 
-                # Por enquanto, retornar posições padrão do arquivo JSON
+                # Tentar carregar layout específico do estudante
+                from models import StudentCertificateLayout
+                student_layout = StudentCertificateLayout.query.filter_by(student_id=student_id).first()
+                
+                if student_layout:
+                    import json
+                    positions = json.loads(student_layout.positions)
+                    colors = json.loads(student_layout.colors) if student_layout.colors else {}
+                    certificate_date = student_layout.certificate_date if hasattr(student_layout, 'certificate_date') else None
+                    return jsonify({
+                        'positions': positions,
+                        'colors': colors,
+                        'certificate_date': certificate_date
+                    })
+                
+                # Se não há layout específico, carregar layout padrão do arquivo JSON
                 import json
                 default_layout_path = os.path.join('static', 'default_certificate_layout.json')
                 
@@ -771,16 +823,53 @@ def create_app(config_name=None):
         def save_certificate_positions():
             try:
                 data = request.get_json()
+                print(f"🔍 Dados recebidos: {data}")
+                
                 student_id = data.get('student_id')
                 positions = data.get('positions')
+                colors = data.get('colors', {})
+                certificate_date = data.get('certificate_date')  # Nova data personalizada
+                
+                print(f"🔍 student_id: {student_id}, positions: {positions}, colors: {colors}, certificate_date: {certificate_date}")
                 
                 if not student_id or not positions:
+                    print(f"❌ Dados insuficientes - student_id: {student_id}, positions: {positions}")
                     return jsonify({'error': 'Dados insuficientes'}), 400
                 
-                # Salvar posições no banco de dados ou arquivo
-                # Por enquanto, apenas retornamos sucesso
+                # Verificar se o estudante existe
+                from models import Student, StudentCertificateLayout
+                student = Student.query.get(student_id)
+                if not student:
+                    return jsonify({'error': 'Estudante não encontrado'}), 404
+                
+                # Verificar se já existe um layout para este estudante
+                student_layout = StudentCertificateLayout.query.filter_by(student_id=student_id).first()
+                
+                import json
+                if student_layout:
+                    # Atualizar layout existente
+                    student_layout.positions = json.dumps(positions)
+                    student_layout.colors = json.dumps(colors)
+                    if certificate_date:
+                        student_layout.certificate_date = certificate_date
+                    student_layout.updated_at = datetime.utcnow()
+                else:
+                    # Criar novo layout
+                    student_layout = StudentCertificateLayout(
+                        student_id=student_id,
+                        positions=json.dumps(positions),
+                        colors=json.dumps(colors),
+                        certificate_date=certificate_date
+                    )
+                    db.session.add(student_layout)
+                
+                db.session.commit()
+                print(f"✅ Posições salvas com sucesso para student_id: {student_id}")
                 return jsonify({'success': True, 'message': 'Posições salvas com sucesso'})
             except Exception as e:
+                print(f"❌ Erro ao salvar posições: {str(e)}")
+                import traceback
+                traceback.print_exc()
                 return jsonify({'error': f'Erro ao salvar posições: {str(e)}'}), 500
 
         @app.route('/api/certificate/save-colors', methods=['POST'])
@@ -794,8 +883,30 @@ def create_app(config_name=None):
                 if not student_id or not colors:
                     return jsonify({'error': 'Dados insuficientes'}), 400
                 
-                # Salvar cores no banco de dados ou arquivo
-                # Por enquanto, apenas retornamos sucesso
+                # Verificar se o estudante existe
+                from models import Student, StudentCertificateLayout
+                student = Student.query.get(student_id)
+                if not student:
+                    return jsonify({'error': 'Estudante não encontrado'}), 404
+                
+                # Verificar se já existe um layout para este estudante
+                student_layout = StudentCertificateLayout.query.filter_by(student_id=student_id).first()
+                
+                import json
+                if student_layout:
+                    # Atualizar cores do layout existente
+                    student_layout.colors = json.dumps(colors)
+                    student_layout.updated_at = datetime.utcnow()
+                else:
+                    # Criar novo layout apenas com cores (posições vazias por enquanto)
+                    student_layout = StudentCertificateLayout(
+                        student_id=student_id,
+                        positions=json.dumps({}),  # Posições vazias
+                        colors=json.dumps(colors)
+                    )
+                    db.session.add(student_layout)
+                
+                db.session.commit()
                 return jsonify({'success': True, 'message': 'Cores salvas com sucesso'})
             except Exception as e:
                 return jsonify({'error': f'Erro ao salvar cores: {str(e)}'}), 500
@@ -805,14 +916,60 @@ def create_app(config_name=None):
         def save_default_layout():
             try:
                 data = request.get_json()
-                layout = data.get('layout')
+                positions = data.get('positions')
+                colors = data.get('colors', {})
                 
-                if not layout:
-                    return jsonify({'error': 'Layout não fornecido'}), 400
+                print(f"Salvando layout padrão - Posições: {positions}")
+                print(f"Salvando layout padrão - Cores: {colors}")
                 
-                # Salvar layout padrão
+                if not positions:
+                    return jsonify({'error': 'Posições não fornecidas'}), 400
+                
+                # Salvar no arquivo JSON
+                import json
+                layout_data = {
+                    'positions': positions,
+                    'colors': colors
+                }
+                
+                default_layout_path = os.path.join('static', 'default_certificate_layout.json')
+                
+                # Criar diretório static se não existir
+                os.makedirs(os.path.dirname(default_layout_path), exist_ok=True)
+                
+                print(f"Salvando arquivo em: {default_layout_path}")
+                
+                with open(default_layout_path, 'w', encoding='utf-8') as f:
+                    json.dump(layout_data, f, indent=2, ensure_ascii=False)
+                
+                print("Arquivo JSON salvo com sucesso")
+                
+                # Também salvar no banco de dados como layout padrão
+                from models import CertificateLayout
+                default_layout = CertificateLayout.query.filter_by(is_default=True).first()
+                
+                if default_layout:
+                    # Atualizar layout padrão existente
+                    default_layout.positions = json.dumps(positions)
+                    default_layout.colors = json.dumps(colors)
+                    default_layout.updated_at = datetime.utcnow()
+                    print("Layout padrão existente atualizado")
+                else:
+                    # Criar novo layout padrão
+                    default_layout = CertificateLayout(
+                        name='default',
+                        positions=json.dumps(positions),
+                        colors=json.dumps(colors),
+                        is_default=True
+                    )
+                    db.session.add(default_layout)
+                    print("Novo layout padrão criado")
+                
+                db.session.commit()
+                print("Banco de dados atualizado com sucesso")
                 return jsonify({'success': True, 'message': 'Layout padrão salvo com sucesso'})
             except Exception as e:
+                print(f"Erro ao salvar layout padrão: {str(e)}")
                 return jsonify({'error': f'Erro ao salvar layout padrão: {str(e)}'}), 500
 
         @app.route('/api/certificate/colors')

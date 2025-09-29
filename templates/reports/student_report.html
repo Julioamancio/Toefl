@@ -55,25 +55,77 @@
                         <div class="col-md-3">
                             <div class="text-center">
                                 <h6>Listening</h6>
-                                <span class="badge bg-primary fs-6">{{ listening_cefr or 'N/A' }}</span>
+                                {% set listening_cefr = student.list_cefr or 'N/A' %}
+                                {% if listening_cefr == 'B2' or listening_cefr == 'B2+' %}
+                                    <span class="badge bg-success fs-6">{{ listening_cefr }}</span>
+                                {% elif listening_cefr == 'B1' %}
+                                    <span class="badge bg-primary fs-6">{{ listening_cefr }}</span>
+                                {% elif listening_cefr in ['A2+', 'A2'] %}
+                                    <span class="badge bg-warning text-dark fs-6">{{ listening_cefr }}</span>
+                                {% elif listening_cefr == 'A1' %}
+                                    <span class="badge bg-info fs-6">{{ listening_cefr }}</span>
+                                {% elif listening_cefr == 'A1 Starter' %}
+                                    <span class="badge bg-danger fs-6">{{ listening_cefr }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary fs-6">{{ listening_cefr }}</span>
+                                {% endif %}
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="text-center">
                                 <h6>Reading</h6>
-                                <span class="badge bg-info fs-6">{{ reading_cefr or 'N/A' }}</span>
+                                {% set reading_cefr = student.read_cefr or 'N/A' %}
+                                {% if reading_cefr == 'B2' or reading_cefr == 'B2+' %}
+                                    <span class="badge bg-success fs-6">{{ reading_cefr }}</span>
+                                {% elif reading_cefr == 'B1' %}
+                                    <span class="badge bg-primary fs-6">{{ reading_cefr }}</span>
+                                {% elif reading_cefr in ['A2+', 'A2'] %}
+                                    <span class="badge bg-warning text-dark fs-6">{{ reading_cefr }}</span>
+                                {% elif reading_cefr == 'A1' %}
+                                    <span class="badge bg-info fs-6">{{ reading_cefr }}</span>
+                                {% elif reading_cefr == 'A1 Starter' %}
+                                    <span class="badge bg-danger fs-6">{{ reading_cefr }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary fs-6">{{ reading_cefr }}</span>
+                                {% endif %}
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="text-center">
                                 <h6>Language Form & Meaning</h6>
-                                <span class="badge bg-warning fs-6">{{ lfm_cefr or 'N/A' }}</span>
+                                {% set lfm_cefr = student.lfm_cefr or 'N/A' %}
+                                {% if lfm_cefr == 'B2' or lfm_cefr == 'B2+' %}
+                                    <span class="badge bg-success fs-6">{{ lfm_cefr }}</span>
+                                {% elif lfm_cefr == 'B1' %}
+                                    <span class="badge bg-primary fs-6">{{ lfm_cefr }}</span>
+                                {% elif lfm_cefr in ['A2+', 'A2'] %}
+                                    <span class="badge bg-warning text-dark fs-6">{{ lfm_cefr }}</span>
+                                {% elif lfm_cefr == 'A1' %}
+                                    <span class="badge bg-info fs-6">{{ lfm_cefr }}</span>
+                                {% elif lfm_cefr == 'A1 Starter' %}
+                                    <span class="badge bg-danger fs-6">{{ lfm_cefr }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary fs-6">{{ lfm_cefr }}</span>
+                                {% endif %}
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="text-center">
                                 <h6>Nível Geral</h6>
-                                <span class="badge bg-success fs-6">{{ overall_cefr or 'N/A' }}</span>
+                                {% set overall_cefr = student.cefr_geral or 'N/A' %}
+                                {% if overall_cefr == 'B2' or overall_cefr == 'B2+' %}
+                                    <span class="badge bg-success fs-6">{{ overall_cefr }}</span>
+                                {% elif overall_cefr == 'B1' %}
+                                    <span class="badge bg-primary fs-6">{{ overall_cefr }}</span>
+                                {% elif overall_cefr in ['A2+', 'A2'] %}
+                                    <span class="badge bg-warning text-dark fs-6">{{ overall_cefr }}</span>
+                                {% elif overall_cefr == 'A1' %}
+                                    <span class="badge bg-info fs-6">{{ overall_cefr }}</span>
+                                {% elif overall_cefr == 'A1 Starter' %}
+                                    <span class="badge bg-danger fs-6">{{ overall_cefr }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary fs-6">{{ overall_cefr }}</span>
+                                {% endif %}
                             </div>
                         </div>
                     </div>

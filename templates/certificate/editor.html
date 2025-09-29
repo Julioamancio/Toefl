@@ -62,6 +62,15 @@
                                 </button>
                             </div>
                             <small class="text-muted">Selecione um elemento e ajuste o tamanho</small>
+                            
+                            <!-- Campo de Data -->
+                            <div class="mt-3">
+                                <label for="certificateDate" class="form-label">
+                                    <i class="fas fa-calendar"></i> Data do Certificado:
+                                </label>
+                                <input type="date" class="form-control form-control-sm" id="certificateDate">
+                                <small class="text-muted">Data que aparecerá no certificado</small>
+                            </div>
                         </div>
 
                         <!-- Upload de Imagem -->
@@ -99,7 +108,7 @@
     
     <div class="row">
         <!-- Área de Edição do Certificado -->
-        <div class="col-md-6">
+        <div class="col-12">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5><i class="fas fa-certificate"></i> Editor de Certificado</h5>
@@ -111,21 +120,24 @@
                         <button class="btn btn-outline-secondary btn-sm" id="zoomIn">
                             <i class="fas fa-search-plus"></i>
                         </button>
+                        <button class="btn btn-success btn-sm" id="downloadCertificate">
+                            <i class="fas fa-download"></i> Download Certificado
+                        </button>
                     </div>
                 </div>
                 <div class="card-body p-0">
                     <div id="certificateContainer" class="position-relative overflow-auto" style="height: 75vh; background: #f8f9fa; display: flex; align-items: center; justify-content: center;">
                         <!-- Template do Certificado -->
-                        <div id="certificateCanvas" class="position-relative" style="width: 100%; max-width: 800px; aspect-ratio: 800/566; background: white; border: 1px solid #ddd; transform-origin: top left;">
+                        <div id="certificateCanvas" class="position-relative" style="width: 800px; height: 566px; background: white; border: 1px solid #ddd; transform-origin: top left;">
                             <!-- Imagem de Fundo do Certificado -->
                             <img id="certificateBackground" src="{{ url_for('static', filename='templates/certificate_template.png') }}" 
                                  alt="Certificate Template" 
-                                 class="position-absolute w-100 h-100" 
-                                 style="z-index: 1; object-fit: cover;">
+                                 class="position-absolute" 
+                                 style="z-index: 1; width: 100%; height: 100%; object-fit: contain;">
 
                             <!-- Elementos Editáveis -->
                             <div id="studentName" class="draggable-element position-absolute" 
-                                 style="z-index: 10; cursor: move; border: 2px dashed transparent; padding: 5px; font-weight: bold;">
+                                 style="z-index: 10; cursor: move; border: 2px dashed #007bff; padding: 2px; font-weight: bold; left: 401px; top: 237px; font-size: 31px; background-color: rgba(0, 123, 255, 0.05);">
                                 [Nome do Estudante]
                                 <div class="element-controls position-absolute" style="top: -30px; right: 0; display: none;">
                                     <button class="btn btn-sm btn-outline-primary resize-btn" data-action="font-size">
@@ -135,57 +147,29 @@
                             </div>
 
                             <div id="listeningScore" class="draggable-element position-absolute" 
-                                 style="z-index: 10; cursor: move; border: 2px dashed transparent; padding: 5px;">
+                                 style="z-index: 10; cursor: move; border: 2px dashed #007bff; padding: 2px; left: 418px; top: 337px; font-size: 16px; background-color: rgba(0, 123, 255, 0.05);">
                                 [Listening Score]
                             </div>
 
                             <div id="readingScore" class="draggable-element position-absolute" 
-                                 style="z-index: 10; cursor: move; border: 2px dashed transparent; padding: 5px;">
+                                 style="z-index: 10; cursor: move; border: 2px dashed #007bff; padding: 2px; left: 626px; top: 336px; font-size: 16px; background-color: rgba(0, 123, 255, 0.05);">
                                 [Reading Score]
                             </div>
 
                             <div id="lfmScore" class="draggable-element position-absolute" 
-                                 style="z-index: 10; cursor: move; border: 2px dashed transparent; padding: 5px;">
+                                 style="z-index: 10; cursor: move; border: 2px dashed #007bff; padding: 2px; left: 419px; top: 365px; font-size: 16px; background-color: rgba(0, 123, 255, 0.05);">
                                 [LFM Score]
                             </div>
 
                             <div id="totalScore" class="draggable-element position-absolute" 
-                                 style="z-index: 10; cursor: move; border: 2px dashed transparent; padding: 5px;">
+                                 style="z-index: 10; cursor: move; border: 2px dashed #007bff; padding: 2px; left: 626px; top: 366px; font-size: 16px; background-color: rgba(0, 123, 255, 0.05);">
                                 [Total Score]
                             </div>
 
                             <div id="testDate" class="draggable-element position-absolute" 
-                                 style="z-index: 10; cursor: move; border: 2px dashed transparent; padding: 5px;">
+                                 style="z-index: 10; cursor: move; border: 2px dashed #007bff; padding: 2px; left: 297px; top: 414px; font-size: 16px; background-color: rgba(0, 123, 255, 0.05);">
                                 [Data do Teste]
                             </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Preview Lateral -->
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5><i class="fas fa-eye"></i> Preview em Tempo Real</h5>
-                    <div class="btn-group" role="group">
-                        <button class="btn btn-outline-secondary btn-sm" id="sidePreviewDecrease">
-                            <i class="fas fa-search-minus"></i>
-                        </button>
-                        <button class="btn btn-outline-secondary btn-sm" id="sidePreviewReset">100%</button>
-                        <button class="btn btn-outline-secondary btn-sm" id="sidePreviewIncrease">
-                            <i class="fas fa-search-plus"></i>
-                        </button>
-                        <button class="btn btn-primary btn-sm" id="sidePreviewDownload">
-                            <i class="fas fa-download"></i> Download
-                        </button>
-                    </div>
-                </div>
-                <div class="card-body p-0">
-                    <div id="sidePreviewContainer" class="position-relative overflow-auto" style="height: 75vh; background: #f8f9fa; display: flex; align-items: center; justify-content: center;">
-                        <div id="sidePreviewCanvas" class="position-relative" style="width: 800px; height: 566px; background: white; border: 1px solid #ddd; transform-origin: center center;">
-                            <img id="sidePreviewImage" src="" alt="Preview" class="w-100 h-100" style="object-fit: fill; display: block;">
                         </div>
                     </div>
                 </div>
@@ -256,35 +240,30 @@ const currentStudentId = urlParams.get('student_id');
 // Variáveis globais para otimização
 let previewUpdateTimeout;
 let lastPreviewUpdate = 0;
-const PREVIEW_UPDATE_DELAY = 8; // 8ms = ~120fps para sincronização ultra-rápida
+const PREVIEW_UPDATE_DELAY = 1; // 1ms para resposta instantânea
 
 // Função para capturar posições atuais dos elementos
 function getCurrentPositions() {
-    const positions = {};
-    const canvas = $('#certificateCanvas');
-    const canvasWidth = canvas.width();
-    const canvasHeight = canvas.height();
+    // USAR SEMPRE AS DIMENSÕES REAIS DO CANVAS (800x566) 
+const CANVAS_WIDTH = 800;
+const CANVAS_HEIGHT = 566;
     
-    console.log('=== getCurrentPositions DEBUG ===');
-    console.log('Canvas dimensions:', canvasWidth, 'x', canvasHeight);
+    const positions = {};
     
     $('.draggable-element').each(function() {
         const element = $(this);
         const elementId = element.attr('id');
         const position = element.position();
         
-        // Converter para porcentagem para manter proporção
-        const xPercent = (position.left / canvasWidth) * 100;
-        const yPercent = (position.top / canvasHeight) * 100;
+        // Calcular percentuais baseados nas dimensões REAIS do canvas (800x566)
+        const xPercent = (position.left / CANVAS_WIDTH) * 100;
+        const yPercent = (position.top / CANVAS_HEIGHT) * 100;
         
         positions[elementId] = {
-            x: Math.round(position.left),
-            y: Math.round(position.top),
-            x_percent: xPercent,
-            y_percent: yPercent
+            x: xPercent,
+            y: yPercent,
+            font_size: parseInt(element.css('font-size')) || 40
         };
-        
-        console.log(`${elementId}: x=${position.left}, y=${position.top} (${xPercent.toFixed(2)}%, ${yPercent.toFixed(2)}%)`);
     });
     
     return positions;
@@ -323,23 +302,6 @@ function generateSidePreviewImmediate() {
         date_color: $('#dateColor').val()
     };
     
-    console.log('=== DEBUG POSIÇÕES ===');
-    console.log('Posições capturadas do editor:', positions);
-    console.log('Dimensões do canvas editor:', {
-        width: $('#certificateCanvas').width(),
-        height: $('#certificateCanvas').height()
-    });
-    console.log('Dimensões do container editor:', {
-        width: $('#certificateContainer').width(),
-        height: $('#certificateContainer').height()
-    });
-    
-    // Debug: verificar dimensões do canvas
-    const canvas = $('#certificateCanvas');
-    const canvasWidth = canvas.width();
-    const canvasHeight = canvas.height();
-    console.log(`DEBUG EDITOR: Canvas dimensions - width: ${canvasWidth}, height: ${canvasHeight}`);
-    
     const requestData = {
         positions: positions,
         colors: colors
@@ -348,8 +310,6 @@ function generateSidePreviewImmediate() {
     if (currentStudentId) {
         requestData.student_id = parseInt(currentStudentId);
     }
-    
-    lastPreviewUpdate = Date.now();
     
     $.ajax({
         url: '/api/certificate/preview',
@@ -363,9 +323,7 @@ function generateSidePreviewImmediate() {
             if (response.success && response.image) {
                 $('#sidePreviewImage').attr('src', response.image);
                 updateSidePreviewScale();
-                console.log('Preview lateral atualizado com sucesso');
-            } else {
-                console.error('Resposta inválida do servidor:', response);
+                updateEditorScale();
             }
         },
         error: function() {
@@ -399,12 +357,47 @@ function updateSidePreviewScale() {
     }
 }
 
+function updateEditorScale() {
+    const canvas = $('#certificateCanvas');
+    const container = $('#certificateContainer');
+    
+    if (canvas.length && container.length) {
+        const containerWidth = container.width();
+        const containerHeight = container.height();
+        const canvasWidth = 800;
+        const canvasHeight = 566;
+        
+        // Calcular escala para caber no container mantendo proporção
+        const scaleX = containerWidth / canvasWidth;
+        const scaleY = containerHeight / canvasHeight;
+        const scale = Math.min(scaleX, scaleY, 1);
+        
+        // Aplicar escala mantendo o centro
+        canvas.css({
+            'transform': `scale(${scale})`,
+            'transform-origin': 'center center'
+        });
+        
+        console.log(`Editor scale: ${scale} (container: ${containerWidth}x${containerHeight}, canvas: ${canvasWidth}x${canvasHeight})`);
+    }
+}
+
 // Inicialização
 $(document).ready(function() {
     console.log('jQuery carregado:', typeof $ !== 'undefined');
     console.log('Inicializando editor de certificado...');
     initializeDragAndDrop();
     setupEventListeners();
+    
+    // Configurar escala inicial
+    updateEditorScale();
+    updateSidePreviewScale();
+    
+    // Configurar evento de resize da janela
+    $(window).on('resize', function() {
+        updateEditorScale();
+        updateSidePreviewScale();
+    });
     
     // Carregar dados do estudante e layout
     if (currentStudentId) {
@@ -496,23 +489,26 @@ function setupEventListeners() {
     $('#loadDefaultBtn').on('click', loadDefaultLayout);
     $('#saveColorsBtn').on('click', saveColors);
     
-    // Side preview controls
-    $('#sidePreviewIncrease').on('click', function() {
-        sidePreviewScale = Math.min(sidePreviewScale + 0.1, 2);
-        updateSidePreviewScale();
-    });
+    // Download certificate button
+    $('#downloadCertificate').on('click', downloadCertificate);
     
-    $('#sidePreviewDecrease').on('click', function() {
-        sidePreviewScale = Math.max(sidePreviewScale - 0.1, 0.3);
-        updateSidePreviewScale();
-    });
-    
-    $('#sidePreviewReset').on('click', function() {
-        sidePreviewScale = 1;
-        updateSidePreviewScale();
-    });
-    
-    $('#sidePreviewDownload').on('click', downloadSidePreview);
+    // Remove side preview controls (no longer needed)
+    // $('#sidePreviewIncrease').on('click', function() {
+    //     sidePreviewScale = Math.min(sidePreviewScale + 0.1, 2);
+    //     updateSidePreviewScale();
+    // });
+    // 
+    // $('#sidePreviewDecrease').on('click', function() {
+    //     sidePreviewScale = Math.max(sidePreviewScale - 0.1, 0.3);
+    //     updateSidePreviewScale();
+    // });
+    // 
+    // $('#sidePreviewReset').on('click', function() {
+    //     sidePreviewScale = 1;
+    //     updateSidePreviewScale();
+    // });
+    // 
+    // $('#sidePreviewDownload').on('click', downloadSidePreview);
     
     // Custom image upload
     $('#customImageUpload').on('change', function(e) {
@@ -671,7 +667,7 @@ function generatePreview() {
         data: JSON.stringify(requestData),
         success: function(response) {
             if (response.success) {
-                $('#previewImage').attr('src', 'data:image/png;base64,' + response.certificate);
+                $('#previewImage').attr('src', response.image);
                 $('#previewModal').modal('show');
             } else {
                 alert('Erro ao gerar preview: ' + (response.error || 'Erro desconhecido'));
@@ -694,14 +690,31 @@ function savePositions() {
             date_color: $('#dateColor').val()
         };
         
+        // Incluir a data personalizada
+        const certificateDate = $('#certificateDate').val();
+        
         const requestData = {
             positions: positions,
-            colors: colors
+            colors: colors,
+            certificate_date: certificateDate
         };
+        
+        // Validação e debug do student_id
+        console.log('🔍 DEBUG: currentStudentId =', currentStudentId);
+        console.log('🔍 DEBUG: URL atual =', window.location.href);
+        console.log('🔍 DEBUG: URLSearchParams =', new URLSearchParams(window.location.search).toString());
         
         if (currentStudentId) {
             requestData.student_id = parseInt(currentStudentId);
+            console.log('✅ DEBUG: student_id adicionado =', requestData.student_id);
+        } else {
+            console.error('❌ DEBUG: currentStudentId está vazio ou undefined');
+            alert('Erro: ID do estudante não encontrado na URL. Verifique se você acessou o editor através do relatório do estudante.');
+            resolve(getCurrentPositions());
+            return;
         }
+        
+        console.log('🔍 DEBUG: Dados que serão enviados =', requestData);
         
         $.ajax({
             url: '/api/certificate/save-positions',
@@ -712,6 +725,7 @@ function savePositions() {
             },
             data: JSON.stringify(requestData),
             success: function(response) {
+                console.log('✅ DEBUG: Resposta de sucesso =', response);
                 if (response.success) {
                     alert('Posições salvas com sucesso!');
                     resolve(getCurrentPositions()); // Fallback para posições atuais
@@ -721,7 +735,9 @@ function savePositions() {
                 }
             },
             error: function(xhr, status, error) {
-                console.log('Erro ao salvar posições:', { xhr, status, error });
+                console.log('❌ DEBUG: Erro na requisição:', { xhr, status, error });
+                console.log('❌ DEBUG: Response text:', xhr.responseText);
+                console.log('❌ DEBUG: Status code:', xhr.status);
                 alert('Erro ao salvar posições. Verifique o console para mais detalhes.');
                 resolve(getCurrentPositions());
             }
@@ -767,27 +783,7 @@ function saveColors() {
     });
 }
 
-function getCurrentPositions() {
-        const positions = {};
-        
-        $('.draggable-element').each(function() {
-            const element = $(this);
-            const elementId = element.attr('id');
-            const elementPosition = element.position();
-            
-            // Usar posição direta do elemento (relativa ao canvas) e incluir tamanho da fonte
-            positions[elementId] = {
-                x: Math.round(elementPosition.left),
-                y: Math.round(elementPosition.top),
-                font_size: parseInt(element.css('font-size'))
-            };
-            
-            console.log(`DEBUG EDITOR: ${elementId} - x: ${Math.round(elementPosition.left)}, y: ${Math.round(elementPosition.top)}, font_size: ${parseInt(element.css('font-size'))}`);
-        });
-        
-        console.log('Posições atuais capturadas:', positions);
-        return positions;
-    }
+
 
 function getCurrentColors() {
     return {
@@ -800,14 +796,35 @@ function getCurrentColors() {
 // Resetar posições
 function resetPositions() {
     if (confirm('Tem certeza que deseja resetar todas as posições?')) {
-        $('#studentName').css({ top: '200px', left: '300px' });
-        $('#listeningScore').css({ top: '300px', left: '200px' });
-        $('#readingScore').css({ top: '300px', left: '400px' });
-        $('#lfmScore').css({ top: '330px', left: '200px' });
-        $('#totalScore').css({ top: '330px', left: '400px' });
-        $('#testDate').css({ top: '450px', left: '300px' });
+        // Usar posições proporcionais baseadas nas dimensões corretas do canvas (800x566)
+        // Convertendo as posições padrão do JSON para pixels
+        const CANVAS_WIDTH = 800;
+        const CANVAS_HEIGHT = 566;
+        
+        // Posições padrão em percentuais (do arquivo default_certificate_layout.json)
+        const defaultPositions = {
+            'studentName': { x: 50.125, y: 41.87 },
+            'listeningScore': { x: 52.25, y: 59.54 },
+            'readingScore': { x: 78.25, y: 59.36 },
+            'lfmScore': { x: 52.375, y: 64.49 },
+            'totalScore': { x: 78.25, y: 64.66 },
+            'testDate': { x: 37.125, y: 73.15 }
+        };
+        
+        // Aplicar posições convertidas para pixels
+        Object.keys(defaultPositions).forEach(function(elementId) {
+            const position = defaultPositions[elementId];
+            const xPixels = (position.x / 100) * CANVAS_WIDTH;
+            const yPixels = (position.y / 100) * CANVAS_HEIGHT;
+            
+            $('#' + elementId).css({
+                left: xPixels + 'px',
+                top: yPixels + 'px'
+            });
+        });
         
         updatePositionInfo();
+        generateSidePreviewImmediate(); // Atualizar preview após reset
     }
 }
 
@@ -844,6 +861,7 @@ function saveAsDefault() {
 }
 
 function loadDefaultLayout() {
+    console.log('Carregando layout padrão...');
     $.ajax({
         url: '/static/default_certificate_layout.json',
         method: 'GET',
@@ -865,9 +883,17 @@ function loadDefaultLayout() {
                 const position = positions[elementId];
                 const element = $('#' + elementId);
                 if (element.length > 0) {
+                    // CONVERTER PERCENTUAIS PARA PIXELS USANDO DIMENSÕES CORRETAS
+                    const CANVAS_WIDTH = 800;
+                    const CANVAS_HEIGHT = 566;
+                    const xPixels = (position.x / 100) * CANVAS_WIDTH;
+                    const yPixels = (position.y / 100) * CANVAS_HEIGHT;
+                    
+                    console.log(`Aplicando posição para ${elementId}: ${xPixels}px, ${yPixels}px`);
+                    
                     element.css({
-                        left: position.x + 'px',
-                        top: position.y + 'px'
+                        left: xPixels + 'px',
+                        top: yPixels + 'px'
                     });
                 }
             });
@@ -883,10 +909,16 @@ function loadDefaultLayout() {
                 $('#dateColor').val(colors.date_color);
             }
             
+            // Aplicar as cores aos elementos
+            updateColors();
             updatePositionInfo();
+            generateSidePreviewImmediate();
+            
+            alert('Layout padrão carregado com sucesso!');
         },
-        error: function() {
-            console.log('Nenhum layout padrão encontrado, usando posições iniciais');
+        error: function(xhr, status, error) {
+            console.log('Erro ao carregar layout padrão:', { xhr, status, error });
+            alert('Erro ao carregar layout padrão. Verifique o console para mais detalhes.');
         }
     });
 }
@@ -940,16 +972,22 @@ function loadStudentLayout(studentId) {
         dataType: 'json',
         success: function(response) {
             console.log('Resposta do carregamento de posições:', response);
-            if (response.success && response.positions) {
+            if (response.positions) {
                 console.log('Aplicando posições específicas do estudante');
                 // Aplicar posições específicas do estudante
                 Object.keys(response.positions).forEach(function(elementId) {
                     const position = response.positions[elementId];
                     const element = $('#' + elementId);
                     if (element.length > 0) {
+                        // CONVERTER PERCENTUAIS PARA PIXELS USANDO DIMENSÕES FIXAS
+                        const CANVAS_WIDTH = 800;
+            const CANVAS_HEIGHT = 566;
+                        const xPixels = (position.x / 100) * CANVAS_WIDTH;
+                        const yPixels = (position.y / 100) * CANVAS_HEIGHT;
+                        
                         element.css({
-                            left: position.x + 'px',
-                            top: position.y + 'px'
+                            left: xPixels + 'px',
+                            top: yPixels + 'px'
                         });
                     }
                 });
@@ -963,10 +1001,19 @@ function loadStudentLayout(studentId) {
                     updateColors(); // Aplicar as cores aos elementos
                 }
                 
+                // Aplicar data personalizada se existir
+                if (response.certificate_date) {
+                    console.log('Aplicando data personalizada:', response.certificate_date);
+                    $('#certificateDate').val(response.certificate_date);
+                    // Atualizar o texto da data no certificado
+                    $('#testDate').text(formatDateForDisplay(response.certificate_date));
+                }
+                
                 updatePositionInfo();
                 console.log('Layout específico do estudante carregado');
             } else {
                 // Se não há layout específico, carregar padrão
+                console.log('Nenhuma posição específica encontrada, carregando layout padrão');
                 loadDefaultLayout();
             }
         },
@@ -1073,8 +1120,8 @@ function initializeDragAndDrop() {
     console.log('Drag and drop inicializado com sucesso');
 }
 
-// Download do preview lateral
-function downloadSidePreview() {
+// Download do certificado
+function downloadCertificate() {
     const positions = getCurrentPositions();
     const colors = {
         name_color: $('#nameColor').val(),
@@ -1142,6 +1189,30 @@ $(document).ready(function() {
     $(window).on('resize', function() {
         setTimeout(generateSidePreview, 100);
     });
+});
+
+// Função para formatar data para exibição
+function formatDateForDisplay(dateString) {
+    if (!dateString) return new Date().toLocaleDateString('pt-BR');
+    
+    const date = new Date(dateString + 'T00:00:00'); // Adicionar horário para evitar problemas de timezone
+    return date.toLocaleDateString('pt-BR');
+}
+
+// Event listener para mudança na data do certificado
+$(document).ready(function() {
+    $('#certificateDate').on('change', function() {
+        const selectedDate = $(this).val();
+        if (selectedDate) {
+            $('#testDate').text(formatDateForDisplay(selectedDate));
+        } else {
+            $('#testDate').text(new Date().toLocaleDateString('pt-BR'));
+        }
+    });
+    
+    // Definir data atual como padrão
+    const today = new Date().toISOString().split('T')[0];
+    $('#certificateDate').val(today);
 });
 </script>
 {% endblock %}

@@ -5,6 +5,7 @@ Serviço para geração de certificados TOEFL Junior com imagem personalizada
 from PIL import Image, ImageDraw, ImageFont
 import os
 import io
+import json
 from datetime import datetime
 
 class CertificateGenerator:
@@ -12,7 +13,40 @@ class CertificateGenerator:
     
     def __init__(self):
         self.template_path = os.path.join('static', 'templates', 'certificate_template.png')
-        # Removido: cores padrão hardcoded - devem vir do editor
+        self.default_layout_path = os.path.join('static', 'default_certificate_layout.json')
+        self._load_default_layout()
+    
+    def _load_default_layout(self):
+        """Carrega o layout padrão do arquivo JSON"""
+        try:
+            if os.path.exists(self.default_layout_path):
+                with open(self.default_layout_path, 'r', encoding='utf-8') as f:
+                    layout_data = json.load(f)
+                    self.default_positions = layout_data.get('positions', {})
+                    self.default_colors = layout_data.get('colors', {})
+                    print(f"✅ Layout padrão carregado: {self.default_positions}")
+            else:
+                print(f"⚠️ Arquivo de layout não encontrado: {self.default_layout_path}")
+                self._set_fallback_layout()
+        except Exception as e:
+            print(f"❌ Erro ao carregar layout padrão: {e}")
+            self._set_fallback_layout()
+    
+    def _set_fallback_layout(self):
+        """Define layout de fallback caso o arquivo não seja encontrado"""
+        self.default_positions = {
+            'studentName': {'x': 401, 'y': 237, 'font_size': 78},
+            'listeningScore': {'x': 418, 'y': 337, 'font_size': 40},
+            'readingScore': {'x': 626, 'y': 336, 'font_size': 40},
+            'lfmScore': {'x': 419, 'y': 365, 'font_size': 40},
+            'totalScore': {'x': 626, 'y': 366, 'font_size': 40},
+            'testDate': {'x': 297, 'y': 414, 'font_size': 40}
+        }
+        self.default_colors = {
+            'name_color': '#000000',
+            'scores_color': '#000000', 
+            'date_color': '#000000'
+        }
     
     def _validate_color(self, color):
         """Valida se a cor está no formato RGB correto"""
@@ -124,8 +158,8 @@ class CertificateGenerator:
         Args:
             custom_positions (dict): Posições personalizadas no formato:
                 {
-                    'studentName': {'x': 100, 'y': 200},
-                    'listeningScore': {'x': 150, 'y': 250},
+                    'studentName': {'x': 100, 'y': 200, 'font_size': 16},
+                    'listeningScore': {'x': 150, 'y': 250, 'font_size': 14},
                     ...
                 }
         """
@@ -143,35 +177,52 @@ class CertificateGenerator:
         if not hasattr(self, '_custom_coordinates'):
             self._custom_coordinates = {}
         
+        # Dimensões do canvas (tamanho real de exibição)
+        CANVAS_WIDTH = 800
+        CANVAS_HEIGHT = 566
+        
+        # Dimensões da imagem original para geração do certificado
+        IMAGE_WIDTH = 2000
+        IMAGE_HEIGHT = 1414
+        
         # Atualizar coordenadas padrão
         for frontend_id, position in custom_positions.items():
             if frontend_id in field_mapping:
                 field_name = field_mapping[frontend_id]
+                
+                # Converter percentuais para pixels usando as dimensões da imagem final
+                x_pixels = (position['x'] / 100) * IMAGE_WIDTH
+                y_pixels = (position['y'] / 100) * IMAGE_HEIGHT
+                
                 self._custom_coordinates[field_name] = {
-                    'x': position['x'],
-                    'y': position['y']
+                    'x': int(x_pixels),
+                    'y': int(y_pixels)
                 }
+                # Incluir font_size se fornecido e escalar proporcionalmente
+                if 'font_size' in position:
+                    # Escalar font_size do canvas (800x566) para imagem final (2000x1414)
+                    scale_factor = IMAGE_WIDTH / CANVAS_WIDTH  # 2000 / 800 = 2.5
+                    scaled_font_size = int(position['font_size'] * scale_factor)
+                    self._custom_coordinates[field_name]['font_size'] = scaled_font_size
                     
     def _get_coordinates(self, custom_colors=None):
         """
-        Define as coordenadas dos campos no certificado
+        Retorna coordenadas e configurações para todos os campos do certificado
         
         Args:
             custom_colors (dict): Cores personalizadas para os campos (opcional)
-                Formato: {
-                    'student_name': (r, g, b) ou 'nome_cor' ou '#hex',
-                    'scores': (r, g, b) ou 'nome_cor' ou '#hex',
-                    'date': (r, g, b) ou 'nome_cor' ou '#hex'
-                }
+        
+        Returns:
+            dict: Coordenadas e configurações para cada campo
         """
-        # Cores padrão caso não sejam fornecidas
+        # Cores padrão
         default_colors = {
             'student_name': (0, 0, 0),  # Preto
             'scores': (0, 0, 0),        # Preto
             'date': (0, 0, 0)           # Preto
         }
         
-        # Processar cores fornecidas ou usar padrão
+        # Processar cores personalizadas
         colors = {}
         required_fields = ['student_name', 'scores', 'date']
         
@@ -182,60 +233,38 @@ class CertificateGenerator:
             else:
                 colors[field] = default_colors[field]
         
-        # Coordenadas base (padrão ou personalizadas)
-        default_coordinates = {
-            'student_name': {'x': 350, 'y': 355},
-            'listening_score': {'x': 370, 'y': 403},
-            'reading_score': {'x': 485, 'y': 403},
-            'lfm_score': {'x': 370, 'y': 418},
-            'overall_score': {'x': 485, 'y': 418},
-            'test_date': {'x': 420, 'y': 442}
+        # Usar coordenadas do layout padrão carregado do JSON
+        field_mapping = {
+            'studentName': 'student_name',
+            'listeningScore': 'listening_score', 
+            'readingScore': 'reading_score',
+            'lfmScore': 'lfm_score',
+            'totalScore': 'overall_score',
+            'testDate': 'test_date'
         }
         
-        coordinates = {
-            'student_name': {
-                'x': default_coordinates['student_name']['x'],
-                'y': default_coordinates['student_name']['y'],
-                'font_size': 100,
-                'color': colors['student_name'],
-                'font_weight': 'bold'
-            },
-            'listening_score': {
-                'x': default_coordinates['listening_score']['x'],
-                'y': default_coordinates['listening_score']['y'],
-                'font_size': 14,
-                'color': colors['scores'],
-                'font_weight': 'normal'
-            },
-            'reading_score': {
-                'x': default_coordinates['reading_score']['x'],
-                'y': default_coordinates['reading_score']['y'],
-                'font_size': 14,
-                'color': colors['scores'],
-                'font_weight': 'normal'
-            },
-            'lfm_score': {
-                'x': default_coordinates['lfm_score']['x'],
-                'y': default_coordinates['lfm_score']['y'],
-                'font_size': 14,
-                'color': colors['scores'],
-                'font_weight': 'normal'
-            },
-            'overall_score': {
-                'x': default_coordinates['overall_score']['x'],
-                'y': default_coordinates['overall_score']['y'],
-                'font_size': 14,
-                'color': colors['scores'],
-                'font_weight': 'normal'
-            },
-            'test_date': {
-                'x': default_coordinates['test_date']['x'],
-                'y': default_coordinates['test_date']['y'],
-                'font_size': 12,
-                'color': colors['date'],
-                'font_weight': 'normal'
-            }
-        }
+        coordinates = {}
+        
+        # Mapear posições do layout padrão para coordenadas do certificado
+        for frontend_id, backend_field in field_mapping.items():
+            if frontend_id in self.default_positions:
+                pos = self.default_positions[frontend_id]
+                
+                # Determinar cor baseada no campo
+                if backend_field == 'student_name':
+                    field_color = colors['student_name']
+                elif backend_field == 'test_date':
+                    field_color = colors['date']
+                else:
+                    field_color = colors['scores']
+                
+                coordinates[backend_field] = {
+                    'x': pos['x'],
+                    'y': pos['y'],
+                    'font_size': pos.get('font_size', 16),
+                    'color': field_color,
+                    'font_weight': 'bold' if backend_field == 'student_name' else 'normal'
+                }
         
         # Aplicar coordenadas personalizadas se existirem
         if hasattr(self, '_custom_coordinates') and self._custom_coordinates:
@@ -243,6 +272,9 @@ class CertificateGenerator:
                 if field_name in coordinates:
                     coordinates[field_name]['x'] = custom_pos['x']
                     coordinates[field_name]['y'] = custom_pos['y']
+                    # Aplicar font_size personalizado se fornecido
+                    if 'font_size' in custom_pos:
+                        coordinates[field_name]['font_size'] = custom_pos['font_size']
         
         return coordinates
     
@@ -383,7 +415,7 @@ class CertificateGenerator:
         """
         raise NotImplementedError("Cores padrão foram removidas. Configure as cores no editor.")
 
-def create_certificate_for_student(student, custom_colors=None, custom_positions=None):
+def create_certificate_for_student(student, custom_colors=None, custom_positions=None, custom_date=None):
     """
     Função auxiliar para criar certificado a partir de um objeto Student
     
@@ -391,15 +423,23 @@ def create_certificate_for_student(student, custom_colors=None, custom_positions
         student: Objeto Student do SQLAlchemy
         custom_colors (dict): Cores personalizadas para os campos (opcional)
         custom_positions (dict): Posições personalizadas para os elementos (opcional)
+        custom_date (str): Data personalizada para o certificado (opcional)
     
     Returns:
         io.BytesIO: Buffer com os dados da imagem do certificado
     """
     generator = CertificateGenerator()
     
+    # Garantir que o layout padrão esteja carregado
+    if not hasattr(generator, 'default_positions') or not generator.default_positions:
+        generator._load_default_layout()
+    
     # Se posições personalizadas foram fornecidas, atualizar as coordenadas
     if custom_positions:
         generator._update_coordinates(custom_positions)
+    
+    # Usar data personalizada se fornecida, senão usar data atual
+    test_date = custom_date if custom_date else datetime.now().strftime("%d/%m/%Y")
     
     student_data = {
         'name': student.name,
@@ -407,7 +447,7 @@ def create_certificate_for_student(student, custom_colors=None, custom_positions
         'reading': student.reading,
         'lfm': student.lfm,
         'total': student.total,
-        'test_date': datetime.now().strftime("%d/%m/%Y")
+        'test_date': test_date
     }
     
     return generator.generate_certificate_bytes(student_data, custom_colors)
