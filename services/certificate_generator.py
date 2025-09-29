@@ -338,14 +338,59 @@ class CertificateGenerator:
     
     def _get_font(self, size, weight='normal'):
         """Obtém fonte apropriada para o texto"""
+        font_candidates = []
+
+        static_font_dir = BASE_DIR / 'static' / 'fonts'
+        if weight == 'bold':
+            font_candidates.extend([
+                static_font_dir / 'OpenSans-Bold.ttf',
+                static_font_dir / 'Montserrat-Bold.ttf',
+                static_font_dir / 'NotoSans-Bold.ttf',
+                static_font_dir / 'NotoSansDisplay-Bold.ttf',
+                Path('arialbd.ttf'),
+                Path('Arial Bold.ttf')
+            ])
+        else:
+            font_candidates.extend([
+                static_font_dir / 'OpenSans-Regular.ttf',
+                static_font_dir / 'Montserrat-Regular.ttf',
+                static_font_dir / 'NotoSans-Regular.ttf',
+                static_font_dir / 'NotoSansDisplay-Regular.ttf',
+                Path('arial.ttf'),
+                Path('Arial.ttf')
+            ])
+
         try:
+            from PIL import ImageFont as PILImageFontModule
+            pil_font_dir = Path(PILImageFontModule.__file__).resolve().parent / 'fonts'
             if weight == 'bold':
-                return ImageFont.truetype("arialbd.ttf", size)
+                font_candidates.append(pil_font_dir / 'DejaVuSans-Bold.ttf')
             else:
-                return ImageFont.truetype("arial.ttf", size)
-        except:
-            # Fallback para fonte padrão
-            return ImageFont.load_default()
+                font_candidates.append(pil_font_dir / 'DejaVuSans.ttf')
+        except Exception:
+            pass
+
+        for candidate in font_candidates:
+            try:
+                candidate_path = Path(candidate)
+                if candidate_path.is_file():
+                    return ImageFont.truetype(str(candidate_path), size)
+                elif candidate_path.exists():
+                    return ImageFont.truetype(str(candidate_path), size)
+            except Exception:
+                continue
+
+        try:
+            return ImageFont.truetype('DejaVuSans.ttf', size)
+        except Exception:
+            pass
+
+        try:
+            return ImageFont.truetype('LiberationSans-Regular.ttf', size)
+        except Exception:
+            pass
+
+        return ImageFont.load_default()
     
     def generate_certificate(self, student_data, custom_colors=None):
         """
