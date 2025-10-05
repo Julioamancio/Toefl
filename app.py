@@ -1591,6 +1591,30 @@ def create_app(config_name=None):
             except Exception as e:
                 return jsonify({'error': f'Erro ao alterar rótulo escolar: {str(e)}'}), 500
 
+        # Novo: alterar manualmente o "nome encontrado" do aluno
+        @app.route('/api/alunos/<int:student_id>/alterar-nome-encontrado', methods=['POST'])
+        @login_required
+        def alterar_nome_encontrado(student_id):
+            try:
+                data = request.get_json() or {}
+                raw_found_name = data.get('found_name', '')
+
+                # Normalização simples: remover espaços extras e limitar tamanho
+                if raw_found_name is None:
+                    normalized_found_name = ''
+                else:
+                    normalized_found_name = str(raw_found_name).strip()
+                if len(normalized_found_name) > 120:
+                    normalized_found_name = normalized_found_name[:120]
+
+                student = Student.query.get_or_404(student_id)
+                student.found_name = normalized_found_name or None  # permitir limpar o campo
+                db.session.commit()
+
+                return jsonify({'success': True, 'message': 'Nome encontrado atualizado com sucesso', 'found_name': student.found_name or ''})
+            except Exception as e:
+                return jsonify({'error': f'Erro ao alterar nome encontrado: {str(e)}'}), 500
+
         @app.route('/api/alunos/deletar-multiplos', methods=['POST'])
         @login_required
         def deletar_multiplos_alunos():

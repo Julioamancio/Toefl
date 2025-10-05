@@ -359,11 +359,34 @@ Pedro; Ana">{{ request.args.get('search', '') }}</textarea>
                                 </td>
                                 <td>
                                     {% set found = student.found_name or found_names_by_id.get(student.id) %}
-                                    {% if found %}
-                                        <span class="badge bg-info text-dark">{{ found }}</span>
-                                    {% else %}
-                                        <span class="text-muted">-</span>
-                                    {% endif %}
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span id="found-name-display-{{ student.id }}">
+                                            {% if found %}
+                                                <span class="badge bg-info text-dark">{{ found }}</span>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </span>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary edit-found-name"
+                                                data-student-id="{{ student.id }}"
+                                                data-current-found="{{ found or '' }}"
+                                                title="Editar nome encontrado">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                    </div>
+                                    <div class="mt-1 d-none" id="found-name-editor-{{ student.id }}">
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" class="form-control" maxlength="120"
+                                                   id="found-name-input-{{ student.id }}" value="{{ found or '' }}"
+                                                   placeholder="Digite o nome encontrado">
+                                            <button class="btn btn-primary save-found-name" data-student-id="{{ student.id }}">
+                                                Salvar
+                                            </button>
+                                            <button class="btn btn-light cancel-found-name" data-student-id="{{ student.id }}">
+                                                Cancelar
+                                            </button>
+                                        </div>
+                                    </div>
                                 </td>
                                 <td>
                                     <div class="d-flex align-items-center gap-2">
@@ -814,6 +837,70 @@ function showQuickInfo(studentId) {
         `;
     }, 1000);
 }
+</script>
+<script>
+// Editor de "Nome encontrado"
+document.addEventListener('DOMContentLoaded', function() {
+    // Abrir editor
+    document.querySelectorAll('.edit-found-name').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const studentId = this.dataset.studentId;
+            const editor = document.getElementById(`found-name-editor-${studentId}`);
+            const display = document.getElementById(`found-name-display-${studentId}`);
+            const input = document.getElementById(`found-name-input-${studentId}`);
+            if (!editor || !display || !input) return;
+            editor.classList.remove('d-none');
+            display.classList.add('d-none');
+            input.focus();
+        });
+    });
+
+    // Cancelar edição
+    document.querySelectorAll('.cancel-found-name').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const studentId = this.dataset.studentId;
+            const editor = document.getElementById(`found-name-editor-${studentId}`);
+            const display = document.getElementById(`found-name-display-${studentId}`);
+            if (!editor || !display) return;
+            editor.classList.add('d-none');
+            display.classList.remove('d-none');
+        });
+    });
+
+    // Salvar edição
+    document.querySelectorAll('.save-found-name').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const studentId = this.dataset.studentId;
+            const input = document.getElementById(`found-name-input-${studentId}`);
+            const editor = document.getElementById(`found-name-editor-${studentId}`);
+            const display = document.getElementById(`found-name-display-${studentId}`);
+            if (!input || !editor || !display) return;
+
+            const newValue = (input.value || '').trim();
+            try {
+                const resp = await fetch(`/api/alunos/${studentId}/alterar-nome-encontrado`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+                    },
+                    body: JSON.stringify({ found_name: newValue })
+                });
+                const data = await resp.json();
+                if (data && data.success) {
+                    const val = data.found_name || '';
+                    display.innerHTML = val ? `<span class="badge bg-info text-dark">${val}</span>` : '<span class="text-muted">-</span>';
+                    editor.classList.add('d-none');
+                    display.classList.remove('d-none');
+                } else {
+                    alert('Erro ao salvar nome encontrado.');
+                }
+            } catch (e) {
+                alert('Erro ao salvar nome encontrado.');
+            }
+        });
+    });
+});
 </script>
 
 <style>
