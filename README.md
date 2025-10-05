@@ -74,8 +74,8 @@ O sistema calcula automaticamente o nível CEFR final baseado na pontuação tot
 ### 1. Clonar/Baixar o Projeto
 ```bash
 # Se usando Git
-git clone <repository-url>
-cd toefl-dashboard
+git clone https://github.com/Julioamancio/Toefl.git
+cd Toefl
 
 # Ou extrair o arquivo ZIP e navegar para a pasta
 ```
@@ -89,16 +89,7 @@ make install
 pip install -r requirements.txt
 ```
 
-### 3. Inicializar Banco de Dados
-```bash
-# Criar banco e usuários iniciais
-make seed
-
-# Ou manualmente
-python init_db.py
-```
-
-### 4. Executar a Aplicação
+### 3. Executar a Aplicação
 ```bash
 # Iniciar servidor de desenvolvimento
 make run
@@ -107,30 +98,32 @@ make run
 python app.py
 ```
 
-### 5. Acessar o Sistema
+### 4. Acessar o Sistema
 Abra seu navegador e acesse: `http://localhost:5000`
 
 **Credenciais padrão:**
-- **Admin**: `admin` / `admin123`
-- **Professor**: `professor` / `professor123`
+- O app cria automaticamente um usuário admin na primeira execução.
+- Pode ser configurado via variáveis de ambiente:
+  - `ADMIN_USERNAME` (padrão: `admin`)
+  - `ADMIN_EMAIL` (padrão: `admin@example.com`)
+  - `ADMIN_PASSWORD` (padrão: `admin123`)
 
 ## 📁 Estrutura do Projeto
 
 ```
-toefl-dashboard/
+Toefl/
 ├── app.py                 # Aplicação principal Flask
 ├── models.py              # Modelos SQLAlchemy
 ├── forms.py               # Formulários Flask-WTF
 ├── requirements.txt       # Dependências Python
-├── init_db.py            # Script de inicialização
 ├── Makefile              # Comandos automatizados
-├── pytest.ini           # Configuração de testes
 ├── README.md             # Este arquivo
-├── toefl.db              # Banco SQLite (criado automaticamente)
+├── wsgi.py               # Entrada WSGI para produção (gunicorn)
 │
 ├── services/
 │   ├── __init__.py
-│   └── importer.py       # Serviço de importação Excel/CSV
+│   ├── importer.py       # Serviço de importação Excel/CSV
+│   └── certificate_generator.py # Gerador de certificado
 │
 ├── templates/            # Templates HTML
 │   ├── base.html         # Template base
@@ -143,34 +136,48 @@ toefl-dashboard/
 │   ├── students/
 │   │   ├── index.html    # Lista de alunos
 │   │   └── detail.html   # Perfil do aluno
+│   ├── teachers/
+│   │   ├── index.html    # Lista e ações de professores
+│   │   └── edit.html     # Página dedicada de edição
 │   ├── classes/
 │   │   └── index.html    # Gerenciamento de turmas
+│   ├── certificate/
+│   │   └── editor.html   # Editor de certificados
 │   └── admin/
 │       └── index.html    # Administração
 │
 ├── static/               # Arquivos estáticos (criado automaticamente)
 │   ├── css/
 │   ├── js/
-│   └── uploads/          # Arquivos enviados
+│   ├── uploads/          # Arquivos enviados
+│   └── templates/        # Layouts padrão de certificado
 │
-└── tests/                # Testes automatizados
-    ├── __init__.py
-    ├── test_models.py     # Testes dos modelos
-    └── test_importer.py  # Testes do importador
+└── arquivos de teste na raiz
+    ├── test_api_filter.py
+    ├── test_quick.py
+    └── test_save_positions.py
 ```
 
 ## 🔧 Comandos Make Disponíveis
 
 ```bash
-make help          # Mostra todos os comandos disponíveis
-make install       # Instala dependências
-make seed          # Inicializa banco de dados
-make run           # Inicia servidor de desenvolvimento
-make test          # Executa testes
-make clean         # Remove arquivos temporários
-make reset         # Remove banco e reinicializa (CUIDADO!)
-make backup        # Cria backup do banco de dados
-make info          # Mostra informações do sistema
+make help            # Mostra todos os comandos disponíveis
+make install         # Instala dependências
+make run             # Inicia servidor de desenvolvimento
+make dev             # Flask com reload automático
+make prod            # Executa em modo produção simples
+make test            # Executa testes
+make test-coverage   # Executa testes com cobertura
+make clean           # Remove arquivos temporários
+make reset           # Remove banco e reinicializa (CUIDADO!)
+make backup          # Cria backup do banco de dados
+make restore         # Restaura backup mais recente
+make info            # Mostra informações do sistema
+make freeze          # Gera requirements.txt atualizado
+make status          # Verifica se o servidor responde
+
+# Observação: o banco SQLite é criado automaticamente na primeira execução.
+# O comando 'make seed' pode não ser necessário dependendo do ambiente.
 ```
 
 ## 🧪 Testes
@@ -182,11 +189,12 @@ O projeto inclui testes automatizados para garantir a qualidade:
 make test
 
 # Executar testes específicos
-python -m pytest tests/test_models.py -v
-python -m pytest tests/test_importer.py -v
+pytest -v test_api_filter.py
+pytest -v test_quick.py
+pytest -v test_save_positions.py
 
 # Executar com cobertura
-python -m pytest --cov=. --cov-report=html
+pytest --cov=. --cov-report=html
 ```
 
 ## 🎨 Tecnologias Utilizadas
@@ -206,7 +214,8 @@ python -m pytest --cov=. --cov-report=html
 - **JavaScript**: Interatividade
 
 ### Banco de Dados
-- **SQLite**: Banco de dados local
+- **SQLite**: Banco local em desenvolvimento (arquivo criado automaticamente)
+- **PostgreSQL**: Suportado em produção via `DATABASE_URL`
 
 ### Testes
 - **Pytest**: Framework de testes
@@ -259,13 +268,23 @@ python -m pytest --cov=. --cov-report=html
 - Estatísticas do sistema
 - Logs de atividade
 
+### Professores (`/teachers`)
+- Lista de professores com ações de editar e deletar
+- Edição com página dedicada: `GET/POST /professores/<id>/editar` (com CSRF)
+- Exclusão: `POST /professores/<id>/deletar` (protegido por CSRF)
+
+### API Utilitários
+- `POST /api/clear-cache` (login + CSRF): limpa caches da aplicação
+
 ## 🔒 Segurança
 
 - **Autenticação obrigatória**: Todas as rotas protegidas
 - **Controle de acesso**: Diferentes níveis de usuário
 - **Validação de arquivos**: Verificação de tipo MIME e tamanho
 - **Sanitização de dados**: Limpeza automática de dados importados
-- **Proteção CSRF**: Tokens de segurança em formulários
+- **Proteção CSRF**: Integrada com Flask-WTF.
+  - Em formulários HTML use `{{ form.hidden_tag() }}` para incluir o token.
+  - Em requisições `fetch`/AJAX envie o cabeçalho `X-CSRFToken` com o valor do meta `csrf-token` presente em `base.html`.
 - **Senhas criptografadas**: Hash seguro com Werkzeug
 
 ## 🐛 Solução de Problemas
@@ -298,6 +317,10 @@ netstat -ano | findstr :5000
 - Confirmar formato do arquivo (Excel ou CSV)
 - Verificar tamanho do arquivo (limite padrão: 16MB)
 - Verificar permissões da pasta `static/uploads/`
+
+### Problemas com CSRF
+- Certifique-se de que os formulários possuem `{{ form.hidden_tag() }}`.
+- Em chamadas `fetch` POST, inclua `X-CSRFToken` obtido de `<meta name="csrf-token" content="{{ csrf_token() }}">`.
 
 ## 📈 Melhorias Futuras
 
@@ -336,3 +359,18 @@ Para dúvidas ou problemas:
 ---
 
 **TOEFL Junior Dashboard** - Desenvolvido com ❤️ para educadores e estudantes.
+
+## ⚙️ Configuração de Ambiente
+
+- `FLASK_ENV`: `development` ou `production` (padrão: `development`)
+- `SECRET_KEY`: chave secreta para CSRF e sessões
+- `DATABASE_URL`: URL do banco em produção (PostgreSQL)
+- `ADMIN_USERNAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`: criação automática do admin
+- `UPLOAD_FOLDER`: pasta de uploads (padrão: `uploads` ou `/tmp/uploads` em produção)
+- `PORT`: porta do servidor (padrão: `5000` para desenvolvimento)
+
+## 🚢 Deploy
+
+- Produção via `gunicorn` usando `wsgi.py`:
+  - `gunicorn --bind 0.0.0.0:8000 wsgi:application`
+- Dockerfile disponível para containerização.
