@@ -1,0 +1,553 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - TOEFL{% endblock %}
+
+{% block chart_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js" crossorigin="anonymous"></script>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-speedometer2 me-2"></i>Dashboard</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{{ url_for('upload') }}" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-cloud-upload me-1"></i>Upload de Dados
+            </a>
+            <a href="{{ url_for('students') }}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-people me-1"></i>Ver Alunos
+            </a>
+        </div>
+        <div class="btn-group">
+            <button type="button" class="btn btn-sm btn-outline-info dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-database me-1"></i>Backup
+            </button>
+            <ul class="dropdown-menu">
+                <li>
+                    <a class="dropdown-item" href="{{ url_for('download_backup') }}">
+                        <i class="bi bi-download me-2"></i>Baixar Backup
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <a class="dropdown-item" href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#uploadBackupModal">
+                        <i class="bi bi-upload me-2"></i>Restaurar Backup
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Upload de Backup -->
+<div class="modal fade" id="uploadBackupModal" tabindex="-1" aria-labelledby="uploadBackupModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadBackupModalLabel">
+                    <i class="bi bi-upload me-2"></i>Restaurar Backup
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('upload_backup') }}" method="post" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-body">
+                    <div class="alert alert-warning" role="alert">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Atenção:</strong> Esta operação irá substituir todos os dados atuais do sistema. 
+                        Certifique-se de ter um backup dos dados atuais antes de prosseguir.
+                    </div>
+                    <div class="mb-3">
+                        <label for="backup_file" class="form-label">Selecione o arquivo de backup (.json)</label>
+                        <input type="file" class="form-control" id="backup_file" name="backup_file" accept=".json" required>
+                        <div class="form-text">
+                            Apenas arquivos JSON de backup são aceitos.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-upload me-1"></i>Restaurar Backup
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Cards de Estatísticas -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Total de Estudantes
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_students }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-people fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Total de Turmas
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_classes }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-collection fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Média Geral
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {% if avg_scores and avg_scores[3] %}
+                                {{ "%.1f"|format(avg_scores[3]) }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-graph-up fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Nível Predominante
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ predominant_level }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-award fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráficos -->
+<div class="row mb-4">
+    <!-- Distribuição por Nível CEFR -->
+    <div class="col-xl-6 col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-pie-chart me-2"></i>Distribuição por Nível CEFR
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" style="position: relative; height: 300px;">
+                    <canvas id="cefrChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Médias por Habilidade -->
+    <div class="col-xl-6 col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-bar-chart me-2"></i>Médias por Habilidade
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" style="position: relative; height: 300px;">
+                    <canvas id="skillsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Comparações Nacional vs {{ school_name }} -->
+<div class="row mb-4">
+    <div class="col-xl-12 col-lg-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-bar-chart-steps me-2"></i>Comparações por CEFR: Nacional vs {{ school_name }}
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-primary mb-2">CEFR 6º Ano — Nacional</h6>
+                        <div class="chart-container" style="position: relative; height: 280px;">
+                            <canvas id="comp6National"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-success mb-2">CEFR 6º Ano — {{ school_name }}</h6>
+                        <div class="chart-container" style="position: relative; height: 280px;">
+                            <canvas id="comp6School"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <h6 class="text-primary mb-2">CEFR 9º Ano — Nacional</h6>
+                        <div class="chart-container" style="position: relative; height: 280px;">
+                            <canvas id="comp9National"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-success mb-2">CEFR 9º Ano — {{ school_name }}</h6>
+                        <div class="chart-container" style="position: relative; height: 280px;">
+                            <canvas id="comp9School"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rankings -->
+<div class="row">
+    <!-- Top 10 Estudantes -->
+    <div class="col-xl-12 col-lg-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-success">
+                    <i class="bi bi-trophy me-2"></i>Top 10 Estudantes por Ano Escolar
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- Top 10 - 6° Ano -->
+                    <div class="col-md-6">
+                        <h6 class="text-primary mb-3">
+                            <i class="bi bi-award me-2"></i>6° Ano
+                        </h6>
+                        {% if top_students_6th %}
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Nome</th>
+                                            <th>Turma</th>
+                                            <th>Pontuação</th>
+                                            <th>Nível</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for student in top_students_6th %}
+                                        <tr{% if loop.index0 % 2 == 1 %} class="table-light"{% endif %}>
+                                            <td>{{ loop.index }}</td>
+                                            <td>
+                                                <a href="{{ url_for('student_detail', id=student.id) }}" class="text-decoration-none">
+                                                    {{ student.name }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-info">{{ student.class_info.name if student.class_info else 'N/A' }}</span>
+                                            </td>
+                                            <td><strong>{{ student.total or 'N/A' }}</strong></td>
+                                            <td>
+                                                {# Fallback para exibir nível geral mesmo sem ComputedLevel #}
+                                                {% set computed_level = student.computed_level %}
+                                                {% if computed_level and computed_level.overall_level %}
+                                                    {% set display_level = computed_level.overall_level %}
+                                                {% else %}
+                                                    {% set display_level = student.get_cefr_level() %}
+                                                {% endif %}
+                                                {% if display_level and display_level != 'N/A' %}
+                                                    <span class="badge bg-primary">{{ display_level }}</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">N/A</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <p class="text-muted text-center">Nenhum estudante de 6° ano encontrado.</p>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Top 10 - 9° Ano -->
+                    <div class="col-md-6">
+                        <h6 class="text-success mb-3">
+                            <i class="bi bi-star me-2"></i>9° Ano
+                        </h6>
+                        {% if top_students_9th %}
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Nome</th>
+                                            <th>Turma</th>
+                                            <th>Pontuação</th>
+                                            <th>Nível</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for student in top_students_9th %}
+                                        <tr{% if loop.index0 % 2 == 1 %} class="table-light"{% endif %}>
+                                            <td>{{ loop.index }}</td>
+                                            <td>
+                                                <a href="{{ url_for('student_detail', id=student.id) }}" class="text-decoration-none">
+                                                    {{ student.name }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-info">{{ student.class_info.name if student.class_info else 'N/A' }}</span>
+                                            </td>
+                                            <td><strong>{{ student.total or 'N/A' }}</strong></td>
+                                            <td>
+                                                {# Fallback para exibir nível geral mesmo sem ComputedLevel #}
+                                                {% set computed_level = student.computed_level %}
+                                                {% if computed_level and computed_level.overall_level %}
+                                                    {% set display_level = computed_level.overall_level %}
+                                                {% else %}
+                                                    {% set display_level = student.get_cefr_level() %}
+                                                {% endif %}
+                                                {% if display_level and display_level != 'N/A' %}
+                                                    <span class="badge bg-primary">{{ display_level }}</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">N/A</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <p class="text-muted text-center">Nenhum estudante de 9° ano encontrado.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .border-left-primary {
+        border-left: 0.25rem solid #4e73df !important;
+    }
+    .border-left-success {
+        border-left: 0.25rem solid #1cc88a !important;
+    }
+    .border-left-info {
+        border-left: 0.25rem solid #36b9cc !important;
+    }
+    .border-left-warning {
+        border-left: 0.25rem solid #f6c23e !important;
+    }
+    
+    .badge-b2 { background-color: #28a745 !important; }
+    .badge-b1 { background-color: #007bff !important; }
+    .badge-a2 { background-color: #ffc107 !important; color: #000 !important; }
+    .badge-a1 { background-color: #17a2b8 !important; }
+    .badge-below-a1 { background-color: #dc3545 !important; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Dados para os gráficos
+const cefrData = {
+    labels: [{% for level, count in cefr_distribution %}'{{ level or "N/A" }}'{% if not loop.last %},{% endif %}{% endfor %}],
+    datasets: [{
+        data: [{% for level, count in cefr_distribution %}{{ count }}{% if not loop.last %},{% endif %}{% endfor %}],
+        backgroundColor: [
+            {% for level, count in cefr_distribution %}
+            {% if level == 'A1' %}'#17a2b8'{% elif level == 'A2' %}'#ffc107'{% elif level == 'A2+' %}'#fd7e14'{% elif level == 'B1' %}'#007bff'{% elif level == 'B2' %}'#28a745'{% elif level == 'Below A1' %}'#dc3545'{% else %}'#6c757d'{% endif %}{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ],
+        borderWidth: 2,
+        borderColor: '#fff'
+    }]
+};
+
+const skillsData = {
+    labels: ['Listening', 'Reading', 'LFM', 'Total'],
+    datasets: [{
+        label: 'Média',
+        data: [
+            {% if avg_scores %}{{ avg_scores[0]|round(1) if avg_scores[0] else 0 }},
+            {{ avg_scores[1]|round(1) if avg_scores[1] else 0 }},
+            {{ avg_scores[2]|round(1) if avg_scores[2] else 0 }},
+            {{ avg_scores[3]|round(1) if avg_scores[3] else 0 }}{% else %}0,0,0,0{% endif %}
+        ],
+        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+        borderColor: 'rgba(54, 162, 235, 1)',
+        borderWidth: 2,
+        fill: true
+    }]
+};
+
+// Configuração dos gráficos
+const cefrConfig = {
+    type: 'doughnut',
+    data: cefrData,
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                        const percentage = ((context.parsed * 100) / total).toFixed(1);
+                        return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
+                    }
+                }
+            }
+        }
+    }
+};
+
+const skillsConfig = {
+    type: 'bar',
+    data: skillsData,
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: 900
+            }
+        },
+        plugins: {
+            legend: {
+                display: false
+            }
+        }
+    }
+};
+
+// Inicializar gráficos
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM carregado, inicializando gráficos...');
+    
+    const cefrElement = document.getElementById('cefrChart');
+    const skillsElement = document.getElementById('skillsChart');
+    
+    if (cefrElement) {
+        console.log('Elemento cefrChart encontrado');
+        const cefrCtx = cefrElement.getContext('2d');
+        new Chart(cefrCtx, cefrConfig);
+    } else {
+        console.error('Elemento cefrChart não encontrado');
+    }
+    
+    if (skillsElement) {
+        console.log('Elemento skillsChart encontrado');
+        const skillsCtx = skillsElement.getContext('2d');
+        new Chart(skillsCtx, skillsConfig);
+    } else {
+        console.error('Elemento skillsChart não encontrado');
+    }
+
+    // ---- Comparações Nacional vs Escola ----
+    function buildGroupedBarConfig(source, title) {
+        // source: {listening:{'*':x,A2:y,B1:z,B2:w}, lfm:{...}, reading:{...}}
+        const labels = ['*','A2','B1','B2'];
+        const listeningData = labels.map(l => (source.listening && source.listening[l] !== undefined) ? source.listening[l] : 0);
+        const lfmData = labels.map(l => (source.lfm && source.lfm[l] !== undefined) ? source.lfm[l] : 0);
+        const readingData = labels.map(l => (source.reading && source.reading[l] !== undefined) ? source.reading[l] : 0);
+        return {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [
+                    { label: 'Listening', data: listeningData, backgroundColor: '#1f77b4' },
+                    { label: 'Language Form & Meaning', data: lfmData, backgroundColor: '#ff7f0e' },
+                    { label: 'Reading', data: readingData, backgroundColor: '#7f7f7f' }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, max: 100 }},
+                plugins: { legend: { position: 'bottom' }, title: { display: false, text: title } }
+            }
+        };
+    }
+
+    const comp6NatEl = document.getElementById('comp6National');
+    const comp6SchEl = document.getElementById('comp6School');
+    const comp9NatEl = document.getElementById('comp9National');
+    const comp9SchEl = document.getElementById('comp9School');
+
+    if (comp6NatEl) {
+        new Chart(comp6NatEl.getContext('2d'), buildGroupedBarConfig({
+            listening: {{ national_6.listening | tojson }},
+            lfm: {{ national_6.lfm | tojson }},
+            reading: {{ national_6.reading | tojson }}
+        }, 'CEFR 6º — Nacional'));
+    }
+    if (comp6SchEl) {
+        new Chart(comp6SchEl.getContext('2d'), buildGroupedBarConfig({
+            listening: {{ school_6.listening | tojson }},
+            lfm: {{ school_6.lfm | tojson }},
+            reading: {{ school_6.reading | tojson }}
+        }, 'CEFR 6º — Escola'));
+    }
+    if (comp9NatEl) {
+        new Chart(comp9NatEl.getContext('2d'), buildGroupedBarConfig({
+            listening: {{ national_9.listening | tojson }},
+            lfm: {{ national_9.lfm | tojson }},
+            reading: {{ national_9.reading | tojson }}
+        }, 'CEFR 9º — Nacional'));
+    }
+    if (comp9SchEl) {
+        new Chart(comp9SchEl.getContext('2d'), buildGroupedBarConfig({
+            listening: {{ school_9.listening | tojson }},
+            lfm: {{ school_9.lfm | tojson }},
+            reading: {{ school_9.reading | tojson }}
+        }, 'CEFR 9º — Escola'));
+    }
+});
+</script>
+{% endblock %}

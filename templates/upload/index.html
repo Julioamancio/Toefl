@@ -1,0 +1,465 @@
+{% extends "base.html" %}
+
+{% block title %}Upload de Dados - TOEFL{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-cloud-upload me-2"></i>Upload de Dados</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{{ url_for('dashboard') }}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Voltar ao Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Formulário de Upload -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-file-earmark-spreadsheet me-2"></i>Importar Planilha TOEFL
+                </h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data" id="uploadForm">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.class_id.label(class="form-label fw-bold") }}
+                        {{ form.class_id(class="form-select" + (" is-invalid" if form.class_id.errors else "")) }}
+                        {% if form.class_id.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.class_id.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">
+                            Selecione a turma para vincular os estudantes. 
+                            <a href="{{ url_for('classes') }}" class="text-decoration-none">Criar nova turma</a>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.file.label(class="form-label fw-bold") }}
+                        <div class="input-group">
+                            {{ form.file(class="form-control" + (" is-invalid" if form.file.errors else ""), id="fileInput", accept=".xlsx,.xls,.csv") }}
+                            <button type="button" class="btn btn-outline-secondary" id="previewBtn" disabled>
+                                <i class="bi bi-eye me-1"></i>Prévia
+                            </button>
+                        </div>
+                        {% if form.file.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.file.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">
+                            Formatos aceitos: .xlsx, .xls, .csv (máximo 16MB)
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="button" class="btn btn-outline-info me-md-2" id="previewBtn2" disabled>
+                            <i class="bi bi-eye me-1"></i>Visualizar Prévia
+                        </button>
+                        {{ form.submit(class="btn btn-primary", id="submitBtn", disabled=true) }}
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Área de Prévia -->
+        <div class="card shadow mb-4" id="previewCard" style="display: none;">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-info">
+                    <i class="bi bi-table me-2"></i>Prévia dos Dados
+                </h6>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="closePreview">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="previewContent">
+                    <!-- Conteúdo da prévia será inserido aqui -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <!-- Instruções -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-success">
+                    <i class="bi bi-info-circle me-2"></i>Instruções
+                </h6>
+            </div>
+            <div class="card-body">
+                <h6 class="text-primary">Formato da Planilha:</h6>
+                <p class="small mb-3">Sua planilha deve conter as seguintes colunas:</p>
+                <ul class="small mb-3">
+                    <li><strong>Name</strong> - Nome do estudante</li>
+                    <li><strong>StudentNumber</strong> - Número do estudante</li>
+                    <li><strong>Listening</strong> - Pontuação Listening</li>
+                    <li><strong>Reading</strong> - Pontuação Reading</li>
+                    <li><strong>LFM</strong> - Language Form and Meaning</li>
+                    <li><strong>Total</strong> - Pontuação total</li>
+                    <li><strong>ListCEFR</strong> - Nível CEFR Listening</li>
+                    <li><strong>ReadCEFR</strong> - Nível CEFR Reading</li>
+                    <li><strong>LFMCEFR</strong> - Nível CEFR LFM</li>
+                    <li><strong>Lexile</strong> - Nível Lexile</li>
+                    <li><strong>OSL</strong> - Oral Structured Language</li>
+                    <li><strong>MetaLabel</strong> - Rótulo escolar do aluno (6.1, 6.2, 6.3, 9.1, 9.2, 9.3)</li>
+                </ul>
+                
+                <h6 class="text-primary">Níveis CEFR Calculados (Base Única):</h6>
+                <ul class="small mb-3">
+                    <li><span class="badge bg-success">B2</span> 865–900</li>
+                    <li><span class="badge bg-primary">B1</span> 730–864</li>
+                    <li><span class="badge bg-warning text-dark">A2+</span> 650–729</li>
+                    <li><span class="badge bg-info">A2</span> 600–649</li>
+                    <li><span class="badge bg-danger">Below A1</span> abaixo de 600</li>
+                </ul>
+                <div class="alert alert-info py-2">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Exemplo: um <strong>Total = 850</strong> classifica como <strong>B1</strong> (não B2) nesta base.
+                </div>
+
+                <h6 class="text-primary">Listening CSA (0–5) — cálculo automático:</h6>
+                <p class="small mb-2">O CSA usa exclusivamente o <strong>score_total</strong> (600–900) e a <strong>turma/nivel</strong> para identificar o grupo. Saída limitada a 0.00–5.00 com duas casas decimais.</p>
+
+                <div class="small mb-3">
+                    <h6 class="text-success">6º ano (FUND-6A…H / 6.1–6.3):</h6>
+                    <ul class="small">
+                        <li>600 → 3.00</li>
+                        <li>600–649 → cresce linearmente até 5.00</li>
+                        <li>> 649 → mantém 5.00</li>
+                        <li>< 600 → mantém 3.00</li>
+                    </ul>
+
+                    <h6 class="text-info">9.1 (FUND-9A…G / nível 9.1):</h6>
+                    <ul class="small">
+                        <li>600–864 → cresce linearmente de 0.00 a 5.00</li>
+                        <li>> 864 → mantém 5.00</li>
+                        <li>< 600 → 0.00</li>
+                    </ul>
+
+                    <h6 class="text-secondary">9.2 e 9.3 (FUND-9A…G / níveis 9.2/9.3 ou vazio):</h6>
+                    <ul class="small">
+                        <li>600–900 → cresce linearmente de 0.00 a 5.00</li>
+                        <li>< 600 → 0.00</li>
+                    </ul>
+                    <div class="small text-muted mb-2">
+                        Exemplo: para nível <strong>9.2</strong> com <strong>Total = 850</strong>, o Listening CSA é aproximadamente <strong>4.17</strong> (não 5.00).
+                    </div>
+
+                    <p class="small text-muted">Identificação automática: FUND-6 ou nível 6.* → regra 6º ano; FUND-9 com nível 9.1 → regra 9.1; FUND-9 com nível 9.2/9.3 ou vazio → regra 9.2/9.3 (registra aviso).</p>
+                </div>
+                
+                <div class="alert alert-warning alert-sm">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    <strong>Importante:</strong> Durante o upload, o sistema recalcula automaticamente o <strong>CEFR geral</strong> pela base única e o <strong>Listening CSA</strong> pelas regras acima. Estudantes com o mesmo StudentNumber são atualizados.
+                </div>
+            </div>
+        </div>
+        
+        <!-- Histórico de Uploads -->
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-secondary">
+                    <i class="bi bi-clock-history me-2"></i>Uploads Recentes
+                </h6>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted mb-2">Seus uploads mais recentes aparecerão aqui.</p>
+                <div class="text-center">
+                    <i class="bi bi-inbox text-muted" style="font-size: 2rem;"></i>
+                    <p class="text-muted small mt-2">Nenhum upload ainda</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('fileInput');
+    const previewBtn = document.getElementById('previewBtn');
+    const previewBtn2 = document.getElementById('previewBtn2');
+    const submitBtn = document.getElementById('submitBtn');
+    const previewCard = document.getElementById('previewCard');
+    const previewContent = document.getElementById('previewContent');
+    const closePreview = document.getElementById('closePreview');
+    const uploadForm = document.getElementById('uploadForm');
+    
+    // Habilitar botões quando arquivo for selecionado
+    fileInput.addEventListener('change', function() {
+        const hasFile = this.files.length > 0;
+        previewBtn.disabled = !hasFile;
+        previewBtn2.disabled = !hasFile;
+        
+        if (hasFile) {
+            // Validar tipo de arquivo
+            const file = this.files[0];
+            const validTypes = ['.xlsx', '.xls', '.csv'];
+            const fileExt = '.' + file.name.split('.').pop().toLowerCase();
+            
+            if (!validTypes.includes(fileExt)) {
+                alert('Tipo de arquivo não suportado. Use apenas .xlsx, .xls ou .csv');
+                this.value = '';
+                previewBtn.disabled = true;
+                previewBtn2.disabled = true;
+                submitBtn.disabled = true;
+                return;
+            }
+            
+            // Validar tamanho do arquivo (16MB)
+            if (file.size > 16 * 1024 * 1024) {
+                alert('Arquivo muito grande. O tamanho máximo é 16MB.');
+                this.value = '';
+                previewBtn.disabled = true;
+                previewBtn2.disabled = true;
+                submitBtn.disabled = true;
+                return;
+            }
+        } else {
+            submitBtn.disabled = true;
+            previewCard.style.display = 'none';
+        }
+    });
+    
+    // Função para mostrar prévia
+    function showPreview() {
+        const file = fileInput.files[0];
+        if (!file) {
+            alert('Selecione um arquivo primeiro.');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        // Mostrar loading
+        previewContent.innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+                <p class="mt-2 text-muted">Processando arquivo...</p>
+            </div>
+        `;
+        previewCard.style.display = 'block';
+        
+        // Fazer requisição para prévia
+        fetch('{{ url_for("upload_preview") }}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayPreview(data);
+                submitBtn.disabled = false;
+            } else {
+                displayError(data.error);
+                submitBtn.disabled = true;
+            }
+        })
+        .catch(error => {
+            displayError('Erro ao processar arquivo: ' + error.message);
+            submitBtn.disabled = true;
+        });
+    }
+    
+    function displayPreview(data) {
+        let html = `
+            <div class="alert alert-success">
+                <i class="bi bi-check-circle me-2"></i>
+                <strong>Arquivo válido!</strong> ${data.total_rows} registros encontrados.
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-sm table-striped">
+                    <thead class="table-dark">
+                        <tr>
+        `;
+        
+        // Cabeçalhos
+        if (data.preview_data.length > 0) {
+            Object.keys(data.preview_data[0]).forEach(key => {
+                html += `<th>${key}</th>`;
+            });
+        }
+        
+        html += `
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        // Dados
+        data.preview_data.forEach(row => {
+            html += '<tr>';
+            Object.values(row).forEach(value => {
+                html += `<td>${value || ''}</td>`;
+            });
+            html += '</tr>';
+        });
+        
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        // Resumo de múltiplas abas (se disponível)
+        if (Array.isArray(data.sheets) && data.sheets.length > 0) {
+            html += `
+                <div class="mt-3">
+                    <h6 class="text-primary">
+                        <i class="bi bi-layout-three-columns me-1"></i>
+                        Abas detectadas no arquivo
+                    </h6>
+                    <div class="list-group" id="sheet-list">
+            `;
+
+            data.sheets.forEach(s => {
+                html += `
+                    <div class="list-group-item d-flex align-items-center gap-3">
+                        <input type="checkbox" class="form-check-input" ${s.import ? 'checked' : ''} data-sheet-name="${s.sheet_name}">
+                        <div class="flex-grow-1">
+                            <span class="fw-bold">${s.sheet_name}</span>
+                            <span class="text-muted small">(${s.valid_rows} linhas válidas)</span>
+                        </div>
+                        <div class="input-group input-group-sm" style="max-width: 300px;">
+                            <span class="input-group-text">Turma</span>
+                            <input type="text" class="form-control" value="${s.suggested_class_name}" data-class-name-for="${s.sheet_name}">
+                        </div>
+                        <span class="badge bg-${s.import ? 'success' : 'secondary'}">${s.import ? 'Importável' : 'Inválida'}</span>
+                    </div>
+                `;
+            });
+
+            html += `
+                    </div>
+                    <div class="alert alert-info mt-2">
+                        Selecione quais abas importar e edite os nomes das turmas, se desejar.
+                    </div>
+                    <div class="d-flex justify-content-end mt-2">
+                        <button type="button" class="btn btn-success" id="confirm-import-btn">
+                            <i class="bi bi-check2-circle me-1"></i>Confirmar Importação Multi-abas
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        if (data.total_rows > 10) {
+            html += `
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Mostrando apenas os primeiros 10 registros de ${data.total_rows} total.
+                </div>
+            `;
+        }
+
+        previewContent.innerHTML = html;
+
+        // Bind confirmar import
+        const confirmBtn = document.getElementById('confirm-import-btn');
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', function() {
+                const file = fileInput.files[0];
+                if (!file) {
+                    alert('Selecione um arquivo primeiro.');
+                    return;
+                }
+                const selectedSheets = [];
+                const classNames = {};
+                document.querySelectorAll('#sheet-list input.form-check-input').forEach(cb => {
+                    const sheet = cb.getAttribute('data-sheet-name');
+                    const classInput = document.querySelector(`#sheet-list input[data-class-name-for="${sheet}"]`);
+                    if (cb.checked) {
+                        selectedSheets.push(sheet);
+                        if (classInput && classInput.value) {
+                            classNames[sheet] = classInput.value;
+                        }
+                    }
+                });
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('selected_sheets', JSON.stringify(selectedSheets));
+                formData.append('class_names', JSON.stringify(classNames));
+
+                // feedback
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Importando...';
+
+                fetch('{{ url_for("upload_confirm") }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+                    },
+                    body: formData
+                })
+                .then(r => r.json())
+                .then(res => {
+                    confirmBtn.disabled = false;
+                    confirmBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i>Confirmar Importação Multi-abas';
+                    if (res.success) {
+                        const ok = res.results.filter(r => r.success);
+                        const fail = res.results.filter(r => !r.success);
+                        const summary = `Importadas ${ok.length} abas, ${res.total_imported} alunos. ${fail.length > 0 ? 'Falhas: ' + fail.map(f=>f.sheet).join(', ') : ''}`;
+                        alert(summary);
+                    } else {
+                        alert('Erro: ' + (res.error || 'Falha ao importar'));
+                    }
+                })
+                .catch(err => {
+                    confirmBtn.disabled = false;
+                    confirmBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i>Confirmar Importação Multi-abas';
+                    alert('Erro: ' + err.message);
+                });
+            });
+        }
+    }
+    
+    function displayError(error) {
+        previewContent.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                <strong>Erro:</strong> ${error}
+            </div>
+        `;
+    }
+    
+    // Event listeners
+    previewBtn.addEventListener('click', showPreview);
+    previewBtn2.addEventListener('click', showPreview);
+    
+    closePreview.addEventListener('click', function() {
+        previewCard.style.display = 'none';
+    });
+    
+    // Validação do formulário
+    uploadForm.addEventListener('submit', function(e) {
+        // Importação multi-abas: turmas serão criadas automaticamente a partir do nome da aba
+        // Não exigir seleção de turma
+        
+        // Mostrar loading no botão
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Processando...';
+        submitBtn.disabled = true;
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,21 @@
+databases:
+  - name: toefl-db
+    plan: free
+
+services:
+  - type: web
+    name: toefl-dashboard
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn wsgi:application
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: toefl-db
+          property: connectionString
+      - key: AUTO_CREATE_TABLES
+        value: "1"

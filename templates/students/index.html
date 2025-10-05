@@ -1,0 +1,1690 @@
+{% extends "base.html" %}
+
+{% block title %}Alunos - TOEFL{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-people me-2"></i>Alunos</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{{ url_for('upload') }}" class="btn btn-sm btn-primary">
+                <i class="bi bi-cloud-upload me-1"></i>Importar Dados
+            </a>
+            <a href="{{ url_for('export_students') }}" class="btn btn-sm btn-outline-success">
+                <i class="bi bi-download me-1"></i>Exportar CSV
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros e Busca -->
+<div class="card shadow mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3" id="filterForm" action="{{ url_for('students') }}">
+            <div class="col-md-3">
+                <label for="search" class="form-label">Buscar por nome(s)</label>
+                <div class="input-group">
+                    <textarea class="form-control" id="search" name="search" rows="3"
+                           placeholder="Digite um ou múltiplos nomes separados por vírgula ou quebra de linha...
+Exemplo:
+Diego Lago
+Maria Silva, João Santos
+Pedro; Ana">{{ request.args.get('search', '') }}</textarea>
+                    <button class="btn btn-outline-secondary" type="button" id="clearSearch">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+                <small class="form-text text-muted">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Separe múltiplos nomes por vírgula (,) ou quebra de linha. 
+                    A busca encontra partes dos nomes independente da ordem.
+                </small>
+            </div>
+            <div class="col-md-2">
+                <label for="class_filter" class="form-label">Filtrar por turma</label>
+                <div class="position-relative">
+                    <select class="form-select" id="class_filter" name="class_filter">
+                        <option value="">Todas as turmas</option>
+                        <option value="ALL_6" {{ 'selected' if request.args.get('class_filter') == 'ALL_6' else '' }}>Todos do 6º ano</option>
+                        <option value="ALL_9" {{ 'selected' if request.args.get('class_filter') == 'ALL_9' else '' }}>Todos do 9º ano</option>
+                        {% for class in classes %}
+                            <option value="{{ class.id }}" 
+                                    {{ 'selected' if request.args.get('class_filter') == class.id|string or class_filter == class.id else '' }}>
+                                {{ class.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    {% if request.args.get('class_filter') %}
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary">
+                            <i class="bi bi-funnel-fill"></i>
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-md-2">
+                <label for="teacher_filter" class="form-label">Filtrar por professor</label>
+                <div class="position-relative">
+                    <select class="form-select" id="teacher_filter" name="teacher_filter">
+                        <option value="">Todos os professores</option>
+                        <option value="0" {{ 'selected' if request.args.get('teacher_filter') == '0' or teacher_filter == 0 else '' }}>Sem professor</option>
+                        {% for teacher in teachers %}
+                            <option value="{{ teacher.id }}" 
+                                    {{ 'selected' if request.args.get('teacher_filter') == teacher.id|string or teacher_filter == teacher.id else '' }}>
+                                {{ teacher.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    {% if request.args.get('teacher_filter') %}
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary">
+                            <i class="bi bi-funnel-fill"></i>
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-md-3">
+                <label for="cefr_filter" class="form-label">Filtrar por nível CEFR</label>
+                <div class="position-relative">
+                    <select class="form-select" id="cefr_filter" name="cefr_filter">
+                        <option value="">Todos os níveis</option>
+                        <option value="B2" {{ 'selected' if request.args.get('cefr_filter') == 'B2' or cefr_filter == 'B2' else '' }}>B2</option>
+                        <option value="B1" {{ 'selected' if request.args.get('cefr_filter') == 'B1' or cefr_filter == 'B1' else '' }}>B1</option>
+                        <option value="A2+" {{ 'selected' if request.args.get('cefr_filter') == 'A2+' or cefr_filter == 'A2+' else '' }}>A2+</option>
+                        <option value="A2" {{ 'selected' if request.args.get('cefr_filter') == 'A2' or cefr_filter == 'A2' else '' }}>A2</option>
+                        <option value="A1" {{ 'selected' if request.args.get('cefr_filter') == 'A1' or cefr_filter == 'A1' else '' }}>A1</option>
+                        <option value="Below A1" {{ 'selected' if request.args.get('cefr_filter') == 'Below A1' or cefr_filter == 'Below A1' else '' }}>Below A1</option>
+                    </select>
+                    {% if request.args.get('cefr_filter') %}
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary">
+                            <i class="bi bi-funnel-fill"></i>
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-md-2">
+                <label for="sheet_filter" class="form-label">Filtrar por aba</label>
+                <div class="position-relative">
+                    <select class="form-select" id="sheet_filter" name="sheet_filter">
+                        <option value="">Todas as abas</option>
+                        {% for sheet in sheet_names %}
+                            <option value="{{ sheet }}" 
+                                    {{ 'selected' if request.args.get('sheet_filter') == sheet or sheet_filter == sheet else '' }}>
+                                {{ sheet }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    {% if request.args.get('sheet_filter') %}
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary">
+                            <i class="bi bi-funnel-fill"></i>
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">&nbsp;</label>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search me-1"></i>Filtrar
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">&nbsp;</label>
+                <div class="d-grid">
+                    <button type="button" class="btn btn-success" id="save-all-changes-btn">
+                        <i class="bi bi-check-circle me-1"></i>
+                        <span class="save-all-text">Salvar Todas</span>
+                        <div class="spinner-border spinner-border-sm d-none" role="status" id="save-all-spinner">
+                            <span class="visually-hidden">Salvando...</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </form>
+        
+        <!-- Indicadores de Filtros Ativos -->
+        {% set active_filters = [] %}
+        {% if request.args.get('search') %}
+            {% set _ = active_filters.append(('Busca', request.args.get('search'))) %}
+        {% endif %}
+        {% if request.args.get('class_filter') %}
+            {% if request.args.get('class_filter') == 'ALL_6' %}
+                {% set _ = active_filters.append(('Turma', 'Todos do 6º ano')) %}
+            {% elif request.args.get('class_filter') == 'ALL_9' %}
+                {% set _ = active_filters.append(('Turma', 'Todos do 9º ano')) %}
+            {% else %}
+            {% for class in classes %}
+                {% if class.id|string == request.args.get('class_filter') %}
+                    {% set _ = active_filters.append(('Turma', class.name)) %}
+                {% endif %}
+            {% endfor %}
+            {% endif %}
+        {% endif %}
+        {% if request.args.get('teacher_filter') %}
+            {% if request.args.get('teacher_filter') == '0' %}
+                {% set _ = active_filters.append(('Professor', 'Sem professor')) %}
+            {% else %}
+                {% for teacher in teachers %}
+                    {% if teacher.id|string == request.args.get('teacher_filter') %}
+                        {% set _ = active_filters.append(('Professor', teacher.name)) %}
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+        {% endif %}
+        {% if request.args.get('cefr_filter') %}
+            {% set _ = active_filters.append(('Nível CEFR', request.args.get('cefr_filter'))) %}
+        {% endif %}
+        {% if request.args.get('sheet_filter') %}
+            {% set _ = active_filters.append(('Aba', request.args.get('sheet_filter'))) %}
+        {% endif %}
+        
+        {% if active_filters %}
+            <div class="mt-3">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <span class="text-muted fw-bold">Filtros ativos:</span>
+                    {% for filter_type, filter_value in active_filters %}
+                        <span class="badge bg-primary fs-6">
+                            <i class="bi bi-funnel-fill me-1"></i>{{ filter_type }}: {{ filter_value }}
+                        </span>
+                    {% endfor %}
+                    <a href="{{ url_for('students') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-x-circle me-1"></i>Limpar todos os filtros
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Estatísticas Rápidas -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="mb-0">{{ students.total }}</h4>
+                        <p class="mb-0">Total de Alunos</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-people" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="mb-0">{{ stats.avg_total|round(1) if stats.avg_total else 0 }}</h4>
+                        <p class="mb-0">
+                            {% if stats.has_filters %}
+                                Média (Filtrada)
+                            {% else %}
+                                Média Geral
+                            {% endif %}
+                        </p>
+                        {% if stats.has_filters and stats.avg_total_general != stats.avg_total_filtered %}
+                            <small class="text-light opacity-75">Geral: {{ stats.avg_total_general|round(1) }}</small>
+                        {% endif %}
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-graph-up" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="mb-0">{{ stats.predominant_cefr or 'N/A' }}</h4>
+                        <p class="mb-0">
+                            {% if stats.has_filters %}
+                                Nível Predominante (Filtrado)
+                            {% else %}
+                                Nível Predominante Geral
+                            {% endif %}
+                        </p>
+                        {% if stats.has_filters and stats.predominant_cefr_general != stats.predominant_cefr_filtered %}
+                            <small class="text-light opacity-75">Geral: {{ stats.predominant_cefr_general }}</small>
+                        {% endif %}
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-award" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-dark">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="mb-0">{{ classes|length }}</h4>
+                        <p class="mb-0">Turmas Ativas</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-collection" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabela de Alunos -->
+<div class="card shadow">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <h6 class="m-0 font-weight-bold text-primary">
+            <i class="bi bi-table me-2"></i>Lista de Alunos
+        </h6>
+        <div class="d-flex align-items-center gap-2">
+            <!-- Botões de ação em lote -->
+            <div id="bulkActions" class="d-none">
+                <button type="button" class="btn btn-sm btn-danger" id="deleteSelectedBtn">
+                    <i class="bi bi-trash me-1"></i>Deletar Selecionados (<span id="selectedCount">0</span>)
+                </button>
+            </div>
+            <!-- Botão Selecionar Todos -->
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="selectAllVisible" onchange="toggleSelectAllVisible()">
+                <label class="form-check-label" for="selectAllVisible">
+                    Selecionar Todos
+                </label>
+            </div>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" 
+                        data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-sort-down me-1"></i>Ordenar
+                </button>
+                <ul class="dropdown-menu">
+                    {% set args_without_sort = request.args.copy() %}
+                    {% set _ = args_without_sort.pop('sort', None) %}
+                    <li><a class="dropdown-item" href="{{ url_for('students', sort='name', **args_without_sort) }}">Nome (A-Z)</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('students', sort='name_desc', **args_without_sort) }}">Nome (Z-A)</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="{{ url_for('students', sort='class', **args_without_sort) }}">Turma (A-Z)</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('students', sort='class_desc', **args_without_sort) }}">Turma (Z-A)</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="{{ url_for('students', sort='total_desc', **args_without_sort) }}">Maior Pontuação</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('students', sort='total', **args_without_sort) }}">Menor Pontuação</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('students', sort='cefr', **args_without_sort) }}">Nível CEFR</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        {% if students.items %}
+            <div class="table-responsive">
+                <table class="table table-hover table-striped mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="40">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="selectAll">
+                                    <label class="form-check-label" for="selectAll"></label>
+                                </div>
+                            </th>
+                            <th>Nome</th>
+                            <th>Nome encontrado</th>
+                            <th>Professor</th>
+                            <th>Turma</th>
+                            <th class="text-center">NÍVEL ESCOLAR</th>
+                            <th class="text-center">Listening CSA</th>
+                            <th class="text-center">Listening</th>
+                            <th class="text-center">Reading</th>
+                            <th class="text-center">LFM</th>
+                            <th class="text-center">Total</th>
+                            <th class="text-center">Nível CEFR</th>
+                            <th class="text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in students.items %}
+                            <tr>
+                                <td>
+                                    <div class="form-check">
+                                        <input class="form-check-input student-checkbox" type="checkbox" 
+                                               value="{{ student.id }}" id="student_{{ student.id }}">
+                                        <label class="form-check-label" for="student_{{ student.id }}"></label>
+                                    </div>
+                                </td>
+                                <td>
+                                    <strong>{{ student.name }}</strong>
+                                </td>
+                                <td>
+                                    {% set found = student.found_name or found_names_by_id.get(student.id) %}
+                                    {% if found %}
+                                        <span class="badge bg-info text-dark">{{ found }}</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <select class="form-select form-select-sm teacher-dropdown" 
+                                                data-student-id="{{ student.id }}" 
+                                                data-current-teacher="{{ student.teacher_id or 0 }}">
+                                            <option value="0" {% if not student.teacher_id %}selected{% endif %}>Sem professor</option>
+                                            {% for teacher in teachers %}
+                                                <option value="{{ teacher.id }}" 
+                                                        {% if student.teacher_id == teacher.id %}selected{% endif %}>
+                                                    {{ teacher.name }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                        <div class="spinner-border spinner-border-sm text-primary d-none" role="status" id="teacher-spinner-{{ student.id }}">
+                                            <span class="visually-hidden">Salvando...</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <select class="form-select form-select-sm class-dropdown" 
+                                                data-student-id="{{ student.id }}" 
+                                                data-current-class="{{ student.class_id or 0 }}">
+                                            <option value="0" {% if not student.class_id %}selected{% endif %}>Sem turma</option>
+                                            {% for class in classes %}
+                                                <option value="{{ class.id }}" 
+                                                        {% if student.class_id == class.id %}selected{% endif %}>
+                                                    {{ class.name }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                        <div class="spinner-border spinner-border-sm text-primary d-none" role="status" id="class-spinner-{{ student.id }}">
+                                            <span class="visually-hidden">Salvando...</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    <div class="d-flex align-items-center justify-content-center gap-2">
+                                        <select class="form-select form-select-sm school-label-dropdown" 
+                                                data-student-id="{{ student.id }}" 
+                                                data-current-label="{{ student.turma_meta or '' }}">
+                                    <option value="" {% if not student.turma_meta %}selected{% endif %}>-</option>
+                                    <option value="6.1" {% if student.turma_meta == '6.1' %}selected{% endif %}>6.1</option>
+                                    <option value="6.2" {% if student.turma_meta == '6.2' %}selected{% endif %}>6.2</option>
+                                    <option value="6.3" {% if student.turma_meta == '6.3' %}selected{% endif %}>6.3</option>
+                                    <option value="9.1" {% if student.turma_meta == '9.1' %}selected{% endif %}>9.1</option>
+                                    <option value="9.2" {% if student.turma_meta == '9.2' %}selected{% endif %}>9.2</option>
+                                    <option value="9.3" {% if student.turma_meta == '9.3' %}selected{% endif %}>9.3</option>
+                                        </select>
+                                        <div class="spinner-border spinner-border-sm text-primary d-none" role="status" id="label-spinner-{{ student.id }}">
+                                            <span class="visually-hidden">Salvando...</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    {% if student.turma_meta and student.listening %}
+                                        {% set listening_csa = student.compute_listening_csa() %}
+                                        {% if listening_csa %}
+                                            {% set rounded_points = listening_csa.points|round(1) %}
+                                            {% if rounded_points > 0 and rounded_points < 1 %}
+                                                {% set display_points = 1 %}
+                                            {% else %}
+                                                {% set display_points = rounded_points %}
+                                            {% endif %}
+                                            <div class="small">
+                                                <div><strong style="color: rgb(0, 155, 13);">{{ display_points }}</strong></div>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if student.listening %}
+                                        <span class="badge bg-light text-dark">{{ student.listening }}</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-light text-dark">{{ student.reading or '-' }}</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-light text-dark">{{ student.lfm or '-' }}</span>
+                                </td>
+                                <td class="text-center">
+                                    <strong class="text-primary">{{ student.total or '-' }}</strong>
+                                </td>
+                                <td class="text-center">
+                                    {% set computed_level = student.computed_level %}
+                                    {% set cefr = computed_level.overall_level if computed_level else student.get_cefr_level() %}
+                                    {% if cefr == 'B2' %}
+                                        <span class="badge bg-success">{{ cefr }}</span>
+                                    {% elif cefr == 'B1' %}
+                                        <span class="badge bg-primary">{{ cefr }}</span>
+                                    {% elif cefr == 'A2' %}
+                                        <span class="badge bg-warning text-dark">{{ cefr }}</span>
+                                    {% elif cefr == 'A1' %}
+                                        <span class="badge bg-info">{{ cefr }}</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">{{ cefr }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <a href="{{ url_for('student_detail', id=student.id) }}" 
+                                           class="btn btn-outline-primary" 
+                                           data-bs-toggle="tooltip" title="Ver Detalhes">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a href="{{ url_for('edit_student_class', id=student.id) }}" 
+                                           class="btn btn-outline-warning" 
+                                           data-bs-toggle="tooltip" title="Alterar Turma">
+                                            <i class="bi bi-collection"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-outline-info" 
+                                                data-bs-toggle="tooltip" title="Informações Rápidas"
+                                                onclick="showQuickInfo({{ student.id }})">
+                                            <i class="bi bi-info-circle"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Paginação -->
+            {% if students.pages > 1 %}
+                <div class="card-footer">
+                    <nav aria-label="Navegação de páginas">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% set args_without_page = request.args.copy() %}
+                            {% set _ = args_without_page.pop('page', None) %}
+                            {% if students.has_prev %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('students', page=students.prev_num, **args_without_page) }}">
+                                        <i class="bi bi-chevron-left"></i>
+                                    </a>
+                                </li>
+                            {% endif %}
+                            
+                            {% for page_num in students.iter_pages() %}
+                                {% if page_num %}
+                                    {% if page_num != students.page %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('students', page=page_num, **args_without_page) }}">
+                                                {{ page_num }}
+                                            </a>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ page_num }}</span>
+                                        </li>
+                                    {% endif %}
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">…</span>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if students.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('students', page=students.next_num, **args_without_page) }}">
+                                        <i class="bi bi-chevron-right"></i>
+                                    </a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    
+                    <div class="text-center mt-2">
+                        <small class="text-muted">
+                            Mostrando {{ students.per_page * (students.page - 1) + 1 }} a 
+                            {{ students.per_page * students.page if students.page < students.pages else students.total }} 
+                            de {{ students.total }} alunos
+                        </small>
+                    </div>
+                </div>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-people text-muted" style="font-size: 4rem;"></i>
+                <h4 class="text-muted mt-3">Nenhum aluno encontrado</h4>
+                <p class="text-muted">Tente ajustar os filtros ou importe novos dados.</p>
+                <a href="{{ url_for('upload') }}" class="btn btn-primary">
+                    <i class="bi bi-cloud-upload me-1"></i>Importar Dados
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal de Informações Rápidas -->
+<div class="modal fade" id="quickInfoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Informações do Aluno</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="quickInfoContent">
+                <!-- Conteúdo será carregado via JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <a href="#" class="btn btn-primary" id="viewDetailsBtn">Ver Detalhes Completos</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Limpar busca
+    document.getElementById('clearSearch').addEventListener('click', function() {
+        document.getElementById('search').value = '';
+        document.getElementById('filterForm').submit();
+    });
+    
+    // Função para salvar alterações pendentes antes de aplicar filtros
+    async function saveChangesBeforeFilter() {
+        const pendingChanges = [];
+        
+        // Verificar alterações nos dropdowns de professor
+        document.querySelectorAll('.teacher-dropdown').forEach(dropdown => {
+            const currentValue = parseInt(dropdown.dataset.currentTeacher);
+            const selectedValue = parseInt(dropdown.value);
+            if (currentValue !== selectedValue) {
+                pendingChanges.push({
+                    type: 'teacher',
+                    studentId: dropdown.dataset.studentId,
+                    value: selectedValue,
+                    dropdown: dropdown
+                });
+            }
+        });
+        
+        // Verificar alterações nos dropdowns de turma
+        document.querySelectorAll('.class-dropdown').forEach(dropdown => {
+            const currentValue = parseInt(dropdown.dataset.currentClass);
+            const selectedValue = parseInt(dropdown.value);
+            if (currentValue !== selectedValue) {
+                pendingChanges.push({
+                    type: 'class',
+                    studentId: dropdown.dataset.studentId,
+                    value: selectedValue,
+                    dropdown: dropdown
+                });
+            }
+        });
+        
+        // Verificar alterações nos dropdowns de rótulo escolar
+        document.querySelectorAll('.school-label-dropdown').forEach(dropdown => {
+            const currentValue = dropdown.dataset.currentLabel;
+            const selectedValue = dropdown.value;
+            if (currentValue !== selectedValue) {
+                pendingChanges.push({
+                    type: 'label',
+                    studentId: dropdown.dataset.studentId,
+                    value: selectedValue,
+                    dropdown: dropdown
+                });
+            }
+        });
+        
+        if (pendingChanges.length === 0) {
+            return true; // Nenhuma alteração pendente
+        }
+        
+        // Salvar todas as alterações pendentes
+        const savePromises = pendingChanges.map(change => {
+            let url, body;
+            
+            switch (change.type) {
+                case 'teacher':
+                    url = `/api/alunos/${change.studentId}/alterar-professor`;
+                    body = { teacher_id: change.value };
+                    break;
+                case 'class':
+                    url = `/api/alunos/${change.studentId}/alterar-turma`;
+                    body = { class_id: change.value };
+                    break;
+                case 'label':
+                    url = `/api/alunos/${change.studentId}/alterar-rotulo-escolar`;
+                    body = { school_label: change.value };
+                    break;
+            }
+            
+            return fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+                },
+                body: JSON.stringify(body)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Atualizar o valor atual no dataset
+                    switch (change.type) {
+                        case 'teacher':
+                            change.dropdown.dataset.currentTeacher = change.value;
+                            break;
+                        case 'class':
+                            change.dropdown.dataset.currentClass = change.value;
+                            break;
+                        case 'label':
+                            change.dropdown.dataset.currentLabel = change.value;
+                            break;
+                    }
+                    return { success: true };
+                } else {
+                    return { success: false, error: data.error };
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao salvar alteração:', error);
+                return { success: false, error: error.message };
+            });
+        });
+        
+        try {
+            const results = await Promise.all(savePromises);
+            const failures = results.filter(r => !r.success);
+            
+            if (failures.length > 0) {
+                showToast('warning', `${pendingChanges.length - failures.length} alterações salvas, ${failures.length} falharam`);
+            } else {
+                showToast('success', `${pendingChanges.length} alterações salvas antes de aplicar filtro`);
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('Erro ao salvar alterações:', error);
+            showToast('error', 'Erro ao salvar alterações pendentes');
+            return false;
+        }
+    }
+
+    // Auto-submit nos filtros (com salvamento de alterações pendentes)
+    document.getElementById('class_filter').addEventListener('change', async function() {
+        await saveChangesBeforeFilter();
+        document.getElementById('filterForm').submit();
+    });
+    
+    document.getElementById('teacher_filter').addEventListener('change', async function() {
+        await saveChangesBeforeFilter();
+        document.getElementById('filterForm').submit();
+    });
+    
+    document.getElementById('cefr_filter').addEventListener('change', async function() {
+        await saveChangesBeforeFilter();
+        document.getElementById('filterForm').submit();
+    });
+    
+    document.getElementById('sheet_filter').addEventListener('change', async function() {
+        await saveChangesBeforeFilter();
+        document.getElementById('filterForm').submit();
+    });
+    
+    // Busca em tempo real (com debounce)
+    let searchTimeout;
+    document.getElementById('search').addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            document.getElementById('filterForm').submit();
+        }, 500);
+    });
+});
+
+// Função para mostrar informações rápidas
+function showQuickInfo(studentId) {
+    const modal = new bootstrap.Modal(document.getElementById('quickInfoModal'));
+    const content = document.getElementById('quickInfoContent');
+    const viewDetailsBtn = document.getElementById('viewDetailsBtn');
+    
+    // Mostrar loading
+    content.innerHTML = `
+        <div class="text-center py-3">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Carregando...</span>
+            </div>
+        </div>
+    `;
+    
+    // Atualizar link do botão
+    viewDetailsBtn.href = `/alunos/${studentId}`;
+    
+    modal.show();
+    
+    // Simular carregamento de dados (substituir por requisição AJAX real)
+    setTimeout(() => {
+        content.innerHTML = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6 class="text-primary">Pontuações</h6>
+                    <ul class="list-unstyled">
+                        <li><strong>Listening:</strong> <span class="badge bg-light text-dark">280</span></li>
+                        <li><strong>Reading:</strong> <span class="badge bg-light text-dark">295</span></li>
+                        <li><strong>LFM:</strong> <span class="badge bg-light text-dark">290</span></li>
+                        <li><strong>Total:</strong> <span class="badge bg-primary">865</span></li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="text-primary">Níveis CEFR</h6>
+                    <ul class="list-unstyled">
+                        <li><strong>Listening:</strong> <span class="badge bg-success">B2</span></li>
+                        <li><strong>Reading:</strong> <span class="badge bg-success">B2</span></li>
+                        <li><strong>LFM:</strong> <span class="badge bg-success">B2</span></li>
+                        <li><strong>Geral:</strong> <span class="badge bg-success">B2</span></li>
+                    </ul>
+                </div>
+            </div>
+            <hr>
+            <div class="row">
+                <div class="col-md-6">
+                    <h6 class="text-primary">Outros Dados</h6>
+                    <ul class="list-unstyled">
+                        <li><strong>Lexile:</strong> 1200L</li>
+                        <li><strong>OSL:</strong> Advanced</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="text-primary">Turma</h6>
+                    <span class="badge bg-secondary">Turma A - 2024</span>
+                </div>
+            </div>
+        `;
+    }, 1000);
+}
+</script>
+
+<style>
+.avatar-sm {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge {
+    font-size: 0.75rem;
+}
+
+.btn-group-sm > .btn {
+    padding: 0.25rem 0.5rem;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(33, 40, 50, 0.15);
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+.class-dropdown {
+    min-width: 120px;
+}
+
+.class-dropdown:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Configurar dropdowns de turma
+    const classDropdowns = document.querySelectorAll('.class-dropdown');
+    
+    classDropdowns.forEach(dropdown => {
+        dropdown.addEventListener('change', function() {
+            const studentId = this.dataset.studentId;
+            const newClassId = parseInt(this.value);
+            const currentClassId = parseInt(this.dataset.currentClass);
+            
+            // Se não houve mudança, não fazer nada
+            if (newClassId === currentClassId) {
+                return;
+            }
+            
+            // Mostrar spinner e desabilitar o dropdown durante a requisição
+            this.disabled = true;
+            const spinner = document.getElementById(`class-spinner-${studentId}`);
+            if (spinner) {
+                spinner.classList.remove('d-none');
+            }
+            const originalValue = this.dataset.currentClass;
+            
+            // Fazer requisição AJAX
+            fetch(`/api/alunos/${studentId}/alterar-turma`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+                },
+                body: JSON.stringify({
+                    class_id: newClassId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Atualizar o valor atual
+                    this.dataset.currentClass = newClassId;
+                    
+                    // Mostrar mensagem de sucesso
+                    showToast('success', data.message);
+                } else {
+                    // Reverter para o valor anterior
+                    this.value = originalValue;
+                    showToast('error', data.error || 'Erro ao alterar turma');
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                // Reverter para o valor anterior
+                this.value = originalValue;
+                showToast('error', 'Erro de conexão. Tente novamente.');
+            })
+            .finally(() => {
+                // Reabilitar o dropdown e esconder spinner
+                this.disabled = false;
+                if (spinner) {
+                    spinner.classList.add('d-none');
+                }
+            });
+        });
+    });
+
+    // Event listeners para dropdowns de rótulo escolar
+    document.querySelectorAll('.school-label-dropdown').forEach(dropdown => {
+        dropdown.addEventListener('change', function() {
+            const studentId = this.dataset.studentId;
+            const newLabel = this.value;
+            const currentLabel = this.dataset.currentLabel;
+            
+            // Se não houve mudança, não fazer nada
+            if (newLabel === currentLabel) {
+                return;
+            }
+            
+            // Mostrar spinner e desabilitar o dropdown durante a requisição
+            this.disabled = true;
+            const spinner = document.getElementById(`label-spinner-${studentId}`);
+            if (spinner) {
+                spinner.classList.remove('d-none');
+            }
+            const originalValue = this.dataset.currentLabel;
+            
+            // Fazer requisição AJAX
+            fetch(`/api/alunos/${studentId}/alterar-rotulo-escolar`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+                },
+                body: JSON.stringify({
+                    school_label: newLabel
+                })
+            })
+            .then(response => {
+                console.log('🔍 DEBUG: Resposta HTTP recebida:', response.status, response.statusText);
+                return response.json();
+            })
+            .then(data => {
+                console.log('🔍 DEBUG: Resposta da API completa:', data);
+                if (data.success) {
+                    console.log('✅ DEBUG: API retornou sucesso');
+                    
+                    // Atualizar o valor atual
+                    this.dataset.currentLabel = newLabel;
+                    console.log('🔍 DEBUG: Rótulo atualizado no dataset para:', newLabel);
+                    
+                    // Mostrar mensagem de sucesso
+                    showToast('success', data.message);
+                    
+                    // Atualizar a nota de listening na interface se disponível
+                    if (data.updated_data) {
+                        console.log('📊 DEBUG: Dados atualizados recebidos:', data.updated_data);
+                        const row = this.closest('tr');
+                        console.log('🔍 DEBUG: Linha da tabela encontrada:', row);
+                        
+                        // Coluna CEFR Listening removida da interface
+                        // Mantendo apenas atualização do Listening CSA se necessário
+                    }
+                } else {
+                    // Reverter para o valor anterior
+                    this.value = originalValue;
+                    showToast('error', data.error || 'Erro ao alterar rótulo escolar');
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                // Reverter para o valor anterior
+                this.value = originalValue;
+                showToast('error', 'Erro de conexão. Tente novamente.');
+            })
+            .finally(() => {
+                // Reabilitar o dropdown e esconder spinner
+                this.disabled = false;
+                if (spinner) {
+                    spinner.classList.add('d-none');
+                }
+            });
+        });
+    });
+    
+    // Função para mostrar toast notifications
+    function showToast(type, message) {
+        // Criar elemento de toast
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+        toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        toast.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        // Adicionar ao body
+        document.body.appendChild(toast);
+        
+        // Remover automaticamente após 5 segundos
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.remove();
+            }
+        }, 5000);
+    }
+
+    // Funcionalidade de seleção múltipla
+    const selectAllCheckbox = document.getElementById('selectAll');
+    const studentCheckboxes = document.querySelectorAll('.student-checkbox');
+    const bulkActions = document.getElementById('bulkActions');
+    const selectedCount = document.getElementById('selectedCount');
+    const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+
+    // Função para atualizar contador e visibilidade dos botões
+    function updateBulkActions() {
+        const checkedBoxes = document.querySelectorAll('.student-checkbox:checked');
+        const count = checkedBoxes.length;
+        
+        console.log('updateBulkActions chamada - checkboxes selecionados:', count);
+        
+        // Atualizar contador
+        if (selectedCount) {
+            selectedCount.textContent = count;
+        }
+        
+        // Mostrar/esconder botões de ação em lote
+        if (bulkActions) {
+            if (count > 0) {
+                bulkActions.classList.remove('d-none');
+                console.log('Mostrando botão de deletar');
+            } else {
+                bulkActions.classList.add('d-none');
+                console.log('Escondendo botão de deletar');
+            }
+        }
+        
+        // Atualizar estado do checkbox "Selecionar Todos" da tabela
+        if (selectAllCheckbox) {
+            if (count === 0) {
+                selectAllCheckbox.indeterminate = false;
+                selectAllCheckbox.checked = false;
+            } else if (count === studentCheckboxes.length) {
+                selectAllCheckbox.indeterminate = false;
+                selectAllCheckbox.checked = true;
+            } else {
+                selectAllCheckbox.indeterminate = true;
+                selectAllCheckbox.checked = false;
+            }
+        }
+        
+        // Sincronizar com o checkbox visível
+        const selectAllVisible = document.getElementById('selectAllVisible');
+        if (selectAllVisible) {
+            if (count === 0) {
+                selectAllVisible.indeterminate = false;
+                selectAllVisible.checked = false;
+            } else if (count === studentCheckboxes.length) {
+                selectAllVisible.indeterminate = false;
+                selectAllVisible.checked = true;
+            } else {
+                selectAllVisible.indeterminate = true;
+                selectAllVisible.checked = false;
+            }
+        }
+    }
+
+    // Event listener para "Selecionar Todos"
+    selectAllCheckbox.addEventListener('change', function() {
+        const isChecked = this.checked;
+        studentCheckboxes.forEach(checkbox => {
+            checkbox.checked = isChecked;
+        });
+        updateBulkActions();
+        
+        // Sincronizar com o checkbox visível
+        const selectAllVisible = document.getElementById('selectAllVisible');
+        if (selectAllVisible) {
+            selectAllVisible.checked = isChecked;
+        }
+    });
+
+    // Event listeners para checkboxes individuais
+    studentCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateBulkActions);
+    });
+
+    // Event listener para botão de deletar selecionados
+    deleteSelectedBtn.addEventListener('click', function() {
+        const checkedBoxes = document.querySelectorAll('.student-checkbox:checked');
+        const studentIds = Array.from(checkedBoxes).map(cb => cb.value);
+        
+        if (studentIds.length === 0) {
+            showToast('error', 'Nenhum aluno selecionado');
+            return;
+        }
+
+        const confirmMessage = `Tem certeza que deseja deletar ${studentIds.length} aluno(s) selecionado(s)? Esta ação não pode ser desfeita.`;
+        
+        if (confirm(confirmMessage)) {
+            // Desabilitar botão durante a operação
+            deleteSelectedBtn.disabled = true;
+            deleteSelectedBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Deletando...';
+            
+            // Fazer requisição para deletar
+            fetch('/api/alunos/deletar-multiplos', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+                },
+                body: JSON.stringify({
+                    student_ids: studentIds
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('success', `${data.deleted_count} aluno(s) deletado(s) com sucesso`);
+                    // Recarregar a página para atualizar a lista
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    showToast('error', data.error || 'Erro ao deletar alunos');
+                    // Reabilitar botão
+                    deleteSelectedBtn.disabled = false;
+                    deleteSelectedBtn.innerHTML = '<i class="bi bi-trash me-1"></i>Deletar Selecionados (<span id="selectedCount">' + studentIds.length + '</span>)';
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                showToast('error', 'Erro de conexão. Tente novamente.');
+                // Reabilitar botão
+                deleteSelectedBtn.disabled = false;
+                deleteSelectedBtn.innerHTML = '<i class="bi bi-trash me-1"></i>Deletar Selecionados (<span id="selectedCount">' + studentIds.length + '</span>)';
+            });
+        }
+    });
+});
+
+// Função para o checkbox "Selecionar Todos" visível
+function toggleSelectAllVisible() {
+    const selectAllVisible = document.getElementById('selectAllVisible');
+    const studentCheckboxes = document.querySelectorAll('.student-checkbox');
+    const bulkActions = document.getElementById('bulkActions');
+    const selectedCount = document.getElementById('selectedCount');
+    
+    // Marcar/desmarcar todos os checkboxes dos alunos
+    const isChecked = selectAllVisible.checked;
+    studentCheckboxes.forEach(checkbox => {
+        checkbox.checked = isChecked;
+    });
+    
+    // Mostrar/esconder botão de deletar diretamente
+    if (isChecked && studentCheckboxes.length > 0) {
+        // Mostrar botão
+        bulkActions.classList.remove('d-none');
+        selectedCount.textContent = studentCheckboxes.length;
+    } else {
+        // Esconder botão
+        bulkActions.classList.add('d-none');
+        selectedCount.textContent = '0';
+    }
+    
+    // Sincronizar com checkbox da tabela
+    const selectAllCheckbox = document.getElementById('selectAll');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.checked = isChecked;
+    }
+}
+
+// Gerenciar mudanças de professor
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('teacher-dropdown')) {
+        const studentId = e.target.dataset.studentId;
+        const teacherId = e.target.value;
+        const currentTeacher = e.target.dataset.currentTeacher;
+        
+        // Se não houve mudança, não fazer nada
+        if (teacherId === currentTeacher) {
+            return;
+        }
+        
+        // Mostrar spinner e desabilitar o dropdown durante a requisição
+        e.target.disabled = true;
+        const spinner = document.getElementById(`teacher-spinner-${studentId}`);
+        if (spinner) {
+            spinner.classList.remove('d-none');
+        }
+        
+        fetch('/update_student_teacher', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+            },
+            body: JSON.stringify({
+                student_id: studentId,
+                teacher_id: teacherId === '0' ? null : teacherId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Atualizar o data-current-teacher IMEDIATAMENTE
+                e.target.dataset.currentTeacher = teacherId;
+                
+                // Mostrar mensagem de sucesso
+                showToast('success', data.message || 'Professor atualizado com sucesso!');
+            } else {
+                // Reverter a seleção
+                e.target.value = currentTeacher;
+                showToast('error', data.error || 'Erro ao atualizar professor');
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            // Reverter a seleção
+            e.target.value = currentTeacher;
+            showToast('error', 'Erro de conexão ao atualizar professor');
+        })
+        .finally(() => {
+            // Reabilitar o dropdown e esconder spinner
+            e.target.disabled = false;
+            if (spinner) {
+                spinner.classList.add('d-none');
+            }
+        });
+    }
+});
+
+// Gerenciar mudanças de turma
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('class-dropdown')) {
+        const studentId = e.target.dataset.studentId;
+        const classId = e.target.value;
+        const currentClass = e.target.dataset.currentClass;
+        
+        // Se não houve mudança, não fazer nada
+        if (classId === currentClass) {
+            return;
+        }
+        
+        // Mostrar spinner e desabilitar o dropdown durante a requisição
+        e.target.disabled = true;
+        const spinner = document.getElementById(`class-spinner-${studentId}`);
+        if (spinner) {
+            spinner.classList.remove('d-none');
+        }
+        
+        fetch(`/api/alunos/${studentId}/alterar-turma`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+            },
+            body: JSON.stringify({
+                class_id: parseInt(classId)
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Atualizar o data-current-class IMEDIATAMENTE
+                e.target.dataset.currentClass = classId;
+                
+                // Mostrar mensagem de sucesso
+                showToast('success', data.message || 'Turma atualizada com sucesso!');
+            } else {
+                // Reverter a seleção
+                e.target.value = currentClass;
+                showToast('error', data.error || 'Erro ao atualizar turma');
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            // Reverter a seleção
+            e.target.value = currentClass;
+            showToast('error', 'Erro de conexão ao atualizar turma');
+        })
+        .finally(() => {
+            // Reabilitar o dropdown e esconder spinner
+            e.target.disabled = false;
+            if (spinner) {
+                spinner.classList.add('d-none');
+            }
+        });
+    }
+});
+
+// Gerenciar mudanças de rótulo escolar
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('school-label-dropdown')) {
+        const studentId = e.target.dataset.studentId;
+        const schoolLabel = e.target.value;
+        const currentLabel = e.target.dataset.currentLabel;
+        
+        // Se não houve mudança, não fazer nada
+        if (schoolLabel === currentLabel) {
+            return;
+        }
+        
+        // Mostrar spinner e desabilitar o dropdown durante a requisição
+        e.target.disabled = true;
+        const spinner = document.getElementById(`label-spinner-${studentId}`);
+        if (spinner) {
+            spinner.classList.remove('d-none');
+        }
+        
+        fetch(`/api/alunos/${studentId}/alterar-rotulo-escolar`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+            },
+            body: JSON.stringify({
+                school_label: schoolLabel
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Atualizar o data-current-label IMEDIATAMENTE
+                e.target.dataset.currentLabel = schoolLabel;
+                
+                // Mostrar mensagem de sucesso
+                showToast('success', data.message || 'Rótulo escolar atualizado com sucesso!');
+            } else {
+                // Reverter a seleção
+                e.target.value = currentLabel;
+                showToast('error', data.error || 'Erro ao atualizar rótulo escolar');
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            // Reverter a seleção
+            e.target.value = currentLabel;
+            showToast('error', 'Erro de conexão ao atualizar rótulo escolar');
+        })
+        .finally(() => {
+            // Reabilitar o dropdown e esconder spinner
+            e.target.disabled = false;
+            if (spinner) {
+                spinner.classList.add('d-none');
+            }
+        });
+    }
+});
+
+// Função para mostrar toast melhorada
+function showToast(type, message) {
+    // Criar toast se não existir
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+        toastContainer.style.zIndex = '9999';
+        document.body.appendChild(toastContainer);
+    }
+    
+    const toastId = 'toast-' + Date.now();
+    const bgClass = type === 'success' ? 'bg-success' : (type === 'warning' ? 'bg-warning' : 'bg-danger');
+    const textClass = type === 'warning' ? 'text-dark' : 'text-white';
+    
+    const toastHtml = `
+        <div id="${toastId}" class="toast ${bgClass} ${textClass}" role="alert">
+            <div class="toast-body">
+                <i class="bi bi-${type === 'success' ? 'check-circle' : (type === 'warning' ? 'exclamation-triangle' : 'x-circle')} me-2"></i>
+                ${message}
+            </div>
+        </div>
+    `;
+    
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+    
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement, { delay: 4000 });
+    toast.show();
+    
+    // Remover toast após ser escondido
+    toastElement.addEventListener('hidden.bs.toast', function() {
+        toastElement.remove();
+    });
+}
+
+// Função para salvamento manual
+document.addEventListener('click', function(e) {
+    if (e.target.closest('.save-student-btn')) {
+        const button = e.target.closest('.save-student-btn');
+        const studentId = button.dataset.studentId;
+        
+        // Obter valores atuais dos dropdowns
+        const teacherDropdown = document.querySelector(`.teacher-dropdown[data-student-id="${studentId}"]`);
+        const classDropdown = document.querySelector(`.class-dropdown[data-student-id="${studentId}"]`);
+        const labelDropdown = document.querySelector(`.school-label-dropdown[data-student-id="${studentId}"]`);
+        
+        const teacherId = teacherDropdown ? teacherDropdown.value : null;
+        const classId = classDropdown ? classDropdown.value : null;
+        const schoolLabel = labelDropdown ? labelDropdown.value : null;
+        
+        // Mostrar spinner no botão
+        const spinner = button.querySelector('.spinner-border');
+        const saveText = button.querySelector('.save-text');
+        const icon = button.querySelector('i');
+        
+        button.disabled = true;
+        spinner.classList.remove('d-none');
+        saveText.textContent = 'Salvando...';
+        icon.classList.add('d-none');
+        
+        // Preparar dados para envio
+        const savePromises = [];
+        
+        // Salvar professor se mudou
+        if (teacherDropdown && teacherId !== teacherDropdown.dataset.currentTeacher) {
+            const teacherPromise = fetch('/update_student_teacher', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+                },
+                body: JSON.stringify({
+                    student_id: studentId,
+                    teacher_id: teacherId === '0' ? null : teacherId
+                })
+            }).then(response => response.json());
+            savePromises.push(teacherPromise);
+        }
+        
+        // Salvar turma se mudou
+        if (classDropdown && classId !== classDropdown.dataset.currentClass) {
+            const classPromise = fetch(`/api/alunos/${studentId}/alterar-turma`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+                },
+                body: JSON.stringify({
+                    class_id: parseInt(classId)
+                })
+            }).then(response => response.json());
+            savePromises.push(classPromise);
+        }
+        
+        // Salvar rótulo escolar se mudou
+        if (labelDropdown && schoolLabel !== labelDropdown.dataset.currentLabel) {
+            const labelPromise = fetch(`/api/alunos/${studentId}/alterar-rotulo-escolar`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+                },
+                body: JSON.stringify({
+                    school_label: schoolLabel
+                })
+            }).then(response => response.json());
+            savePromises.push(labelPromise);
+        }
+        
+        // Executar todas as promessas
+        if (savePromises.length === 0) {
+            // Nenhuma alteração para salvar
+            showToast('info', 'Nenhuma alteração para salvar');
+            resetSaveButton();
+            return;
+        }
+        
+        Promise.all(savePromises)
+            .then(results => {
+                let hasError = false;
+                let successCount = 0;
+                
+                results.forEach(result => {
+                    if (result.success) {
+                        successCount++;
+                    } else {
+                        hasError = true;
+                        console.error('Erro ao salvar:', result.error);
+                    }
+                });
+                
+                if (hasError) {
+                    showToast('error', 'Algumas alterações não puderam ser salvas. Verifique o console para detalhes.');
+                } else {
+                    // Atualizar os valores atuais nos datasets
+                    if (teacherDropdown) teacherDropdown.dataset.currentTeacher = teacherId;
+                    if (classDropdown) classDropdown.dataset.currentClass = classId;
+                    if (labelDropdown) labelDropdown.dataset.currentLabel = schoolLabel;
+                    
+                    showToast('success', `${successCount} alteração(ões) salva(s) com sucesso!`);
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao salvar alterações:', error);
+                showToast('error', 'Erro de conexão ao salvar alterações');
+            })
+            .finally(() => {
+                resetSaveButton();
+            });
+        
+        function resetSaveButton() {
+            button.disabled = false;
+            spinner.classList.add('d-none');
+            saveText.textContent = 'Salvar';
+            icon.classList.remove('d-none');
+        }
+    }
+});
+
+// Botão de salvamento global
+document.getElementById('save-all-changes-btn').addEventListener('click', function() {
+    const button = this;
+    const spinner = button.querySelector('#save-all-spinner');
+    const saveText = button.querySelector('.save-all-text');
+    const icon = button.querySelector('i');
+    
+    // Mostrar spinner
+    button.disabled = true;
+    spinner.classList.remove('d-none');
+    saveText.textContent = 'Salvando...';
+    icon.classList.add('d-none');
+    
+    // Coletar todas as alterações pendentes
+    const allChanges = [];
+    
+    // Verificar dropdowns de professor
+    document.querySelectorAll('.teacher-dropdown').forEach(dropdown => {
+        const currentTeacher = dropdown.dataset.currentTeacher || '';
+        const newTeacher = dropdown.value;
+        if (currentTeacher !== newTeacher) {
+            allChanges.push({
+                type: 'teacher',
+                studentId: dropdown.dataset.studentId,
+                value: newTeacher,
+                dropdown: dropdown
+            });
+        }
+    });
+    
+    // Verificar dropdowns de turma
+    document.querySelectorAll('.class-dropdown').forEach(dropdown => {
+        const currentClass = dropdown.dataset.currentClass || '';
+        const newClass = dropdown.value;
+        if (currentClass !== newClass) {
+            allChanges.push({
+                type: 'class',
+                studentId: dropdown.dataset.studentId,
+                value: newClass,
+                dropdown: dropdown
+            });
+        }
+    });
+    
+    // Verificar dropdowns de rótulo escolar
+    document.querySelectorAll('.school-label-dropdown').forEach(dropdown => {
+        const currentLabel = dropdown.dataset.currentLabel || '';
+        const newLabel = dropdown.value;
+        if (currentLabel !== newLabel) {
+            allChanges.push({
+                type: 'school_label',
+                studentId: dropdown.dataset.studentId,
+                value: newLabel,
+                dropdown: dropdown
+            });
+        }
+    });
+    
+    if (allChanges.length === 0) {
+        showToast('success', 'Nenhuma alteração pendente para salvar');
+        resetSaveAllButton();
+        return;
+    }
+    
+    // Processar todas as alterações
+    const savePromises = allChanges.map(change => {
+        let url, data;
+        
+        switch(change.type) {
+            case 'teacher':
+                url = `/update_student_teacher`;
+                data = {
+                    student_id: change.studentId,
+                    teacher_id: change.value
+                };
+                break;
+            case 'class':
+                url = `/api/alunos/${change.studentId}/alterar-turma`;
+                data = {
+                    class_id: change.value
+                };
+                break;
+            case 'school_label':
+                url = `/api/alunos/${change.studentId}/alterar-rotulo-escolar`;
+                data = {
+                    school_label: change.value
+                };
+                break;
+        }
+        
+        return fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(result => {
+            if (result.success) {
+                // Atualizar o dataset do dropdown
+                if (change.type === 'teacher') {
+                    change.dropdown.dataset.currentTeacher = change.value;
+                } else if (change.type === 'class') {
+                    change.dropdown.dataset.currentClass = change.value;
+                } else if (change.type === 'school_label') {
+                    change.dropdown.dataset.currentLabel = change.value;
+                }
+            }
+            return result;
+        })
+        .catch(error => {
+            console.error('Erro na requisição:', error);
+            return { success: false, error: error.message };
+        });
+    });
+    
+    Promise.all(savePromises)
+        .then(results => {
+            let successCount = 0;
+            let errorCount = 0;
+            
+            results.forEach(result => {
+                if (result.success) {
+                    successCount++;
+                } else {
+                    errorCount++;
+                    console.error('Erro ao salvar:', result.error);
+                }
+            });
+            
+            if (errorCount > 0) {
+                showToast(`${successCount} alterações salvas, ${errorCount} falharam. Verifique o console.`, 'warning');
+            } else {
+                showToast(`Todas as ${successCount} alterações foram salvas com sucesso!`, 'success');
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao salvar alterações:', error);
+            showToast('Erro de conexão ao salvar alterações', 'error');
+        })
+        .finally(() => {
+            resetSaveAllButton();
+        });
+    
+    function resetSaveAllButton() {
+        button.disabled = false;
+        spinner.classList.add('d-none');
+        saveText.textContent = 'Salvar Todas';
+        icon.classList.remove('d-none');
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+
+{% block title %}Relatório - {{ student.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Cabeçalho do Relatório -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-file-alt me-2"></i>
+                        Relatório Individual - TOEFL Junior
+                    </h4>
+                    <div class="btn-group">
+                        <button onclick="window.print()" class="btn btn-light btn-sm">
+                            <i class="fas fa-print me-1"></i>Imprimir
+                        </button>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-light btn-sm">
+                            <i class="fas fa-arrow-left me-1"></i>Voltar
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5 class="text-primary">Dados do Aluno</h5>
+                            <p><strong>Nome:</strong> {{ student.name }}</p>
+                            <p><strong>Número:</strong> {{ student.student_number or 'N/A' }}</p>
+                            <p><strong>Turma:</strong> {{ student.class_info.name if student.class_info else 'N/A' }}</p>
+                            <p><strong>Professor:</strong> {{ student.teacher.name if student.teacher else 'N/A' }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5 class="text-primary">Pontuações</h5>
+                            <p><strong>Listening:</strong> {{ student.listening or 'N/A' }}</p>
+                            <p><strong>Reading:</strong> {{ student.reading or 'N/A' }}</p>
+                            <p><strong>Language Form & Meaning:</strong> {{ student.lfm or 'N/A' }}</p>
+                            <p><strong>Total:</strong> {{ student.total or 'N/A' }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Níveis CEFR -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        Níveis CEFR
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h6>Listening</h6>
+                                {% set listening_cefr = student.list_cefr or 'N/A' %}
+                                {% if listening_cefr == 'B2' or listening_cefr == 'B2+' %}
+                                    <span class="badge bg-success fs-6">{{ listening_cefr }}</span>
+                                {% elif listening_cefr == 'B1' %}
+                                    <span class="badge bg-primary fs-6">{{ listening_cefr }}</span>
+                                {% elif listening_cefr in ['A2+', 'A2'] %}
+                                    <span class="badge bg-warning text-dark fs-6">{{ listening_cefr }}</span>
+                                {% elif listening_cefr == 'A1' %}
+                                    <span class="badge bg-info fs-6">{{ listening_cefr }}</span>
+                                {% elif listening_cefr == 'A1 Starter' %}
+                                    <span class="badge bg-danger fs-6">{{ listening_cefr }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary fs-6">{{ listening_cefr }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h6>Reading</h6>
+                                {% set reading_cefr = student.read_cefr or 'N/A' %}
+                                {% if reading_cefr == 'B2' or reading_cefr == 'B2+' %}
+                                    <span class="badge bg-success fs-6">{{ reading_cefr }}</span>
+                                {% elif reading_cefr == 'B1' %}
+                                    <span class="badge bg-primary fs-6">{{ reading_cefr }}</span>
+                                {% elif reading_cefr in ['A2+', 'A2'] %}
+                                    <span class="badge bg-warning text-dark fs-6">{{ reading_cefr }}</span>
+                                {% elif reading_cefr == 'A1' %}
+                                    <span class="badge bg-info fs-6">{{ reading_cefr }}</span>
+                                {% elif reading_cefr == 'A1 Starter' %}
+                                    <span class="badge bg-danger fs-6">{{ reading_cefr }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary fs-6">{{ reading_cefr }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h6>Language Form & Meaning</h6>
+                                {% set lfm_cefr = student.lfm_cefr or 'N/A' %}
+                                {% if lfm_cefr == 'B2' or lfm_cefr == 'B2+' %}
+                                    <span class="badge bg-success fs-6">{{ lfm_cefr }}</span>
+                                {% elif lfm_cefr == 'B1' %}
+                                    <span class="badge bg-primary fs-6">{{ lfm_cefr }}</span>
+                                {% elif lfm_cefr in ['A2+', 'A2'] %}
+                                    <span class="badge bg-warning text-dark fs-6">{{ lfm_cefr }}</span>
+                                {% elif lfm_cefr == 'A1' %}
+                                    <span class="badge bg-info fs-6">{{ lfm_cefr }}</span>
+                                {% elif lfm_cefr == 'A1 Starter' %}
+                                    <span class="badge bg-danger fs-6">{{ lfm_cefr }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary fs-6">{{ lfm_cefr }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h6>Nível Geral</h6>
+                                {% set overall_cefr = student.cefr_geral or 'N/A' %}
+                                {% if overall_cefr == 'B2' or overall_cefr == 'B2+' %}
+                                    <span class="badge bg-success fs-6">{{ overall_cefr }}</span>
+                                {% elif overall_cefr == 'B1' %}
+                                    <span class="badge bg-primary fs-6">{{ overall_cefr }}</span>
+                                {% elif overall_cefr in ['A2+', 'A2'] %}
+                                    <span class="badge bg-warning text-dark fs-6">{{ overall_cefr }}</span>
+                                {% elif overall_cefr == 'A1' %}
+                                    <span class="badge bg-info fs-6">{{ overall_cefr }}</span>
+                                {% elif overall_cefr == 'A1 Starter' %}
+                                    <span class="badge bg-danger fs-6">{{ overall_cefr }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary fs-6">{{ overall_cefr }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botões de Ação -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body text-center">
+                    <button onclick="window.print()" class="btn btn-primary me-2">
+                        <i class="fas fa-print"></i> Imprimir
+                    </button>
+                    <button onclick="openCertificateEditor()" class="btn btn-warning me-2">
+                        <i class="fas fa-edit"></i> Editar Certificado
+                    </button>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar ao Dashboard
+                    </a>
+                </div>
+            </div>
+
+
+        </div>
+    </div>
+</div>
+
+<style>
+@media print {
+    .btn-group, .card-header .btn-group, .no-print {
+        display: none !important;
+    }
+    
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+    
+    .card-header {
+        background-color: #007bff !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    
+    body {
+        background: white !important;
+    }
+}
+</style>
+
+<script>
+// Função para abrir o editor de certificado
+function openCertificateEditor() {
+    const studentId = '{{ student.id }}';
+    const editorUrl = `/certificate/editor?student_id=${studentId}`;
+    
+    console.log('Abrindo editor para estudante:', studentId);
+    console.log('URL do editor:', editorUrl);
+    
+    // Tentar abrir em nova aba
+    const newWindow = window.open(editorUrl, '_blank');
+    
+    // Verificar se a janela foi bloqueada
+    if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
+        alert('Pop-up bloqueado! Por favor, permita pop-ups para este site ou clique no link abaixo.');
+        // Fallback: redirecionar na mesma aba
+        window.location.href = editorUrl;
+    }
+}
+
+// Função para download do certificado com dados salvos do editor
+function downloadWithColors() {
+    const studentId = '{{ student.id }}';
+    
+    // Primeiro, tentar carregar as posições e cores salvas do editor
+    loadSavedDataAndDownloadFromReport(studentId);
+}
+
+// Nova função para carregar dados salvos e fazer download da página de reports
+function loadSavedDataAndDownloadFromReport(studentId) {
+    // Carregar posições salvas
+    const loadPositionsPromise = new Promise((resolve) => {
+        $.ajax({
+            url: `/api/certificate/load-positions?student_id=${studentId}`,
+            method: 'GET',
+            success: function(response) {
+                if (response.success && response.positions) {
+                    resolve(response.positions);
+                } else {
+                    resolve(null); // Usar posições padrão do servidor
+                }
+            },
+            error: function() {
+                resolve(null); // Usar posições padrão do servidor
+            }
+        });
+    });
+    
+    // Carregar cores salvas (deve ser obtido do editor)
+    const loadColorsPromise = new Promise((resolve, reject) => {
+        // Tentar carregar cores do editor
+        $.ajax({
+            url: `/api/certificate/colors?student_id=${studentId}`,
+            method: 'GET',
+            success: function(response) {
+                if (response.success && response.colors) {
+                    resolve(response.colors);
+                } else {
+                    reject(new Error('Cores não configuradas. Configure as cores no editor de certificado.'));
+                }
+            },
+            error: function() {
+                reject(new Error('Cores não configuradas. Configure as cores no editor de certificado.'));
+            }
+        });
+    });
+    
+    // Quando ambos os dados estiverem carregados, fazer o download
+    Promise.all([loadPositionsPromise, loadColorsPromise]).then(([positions, colors]) => {
+        // Se temos posições salvas, usar a API de download do editor
+        if (positions) {
+            const requestData = {
+                student_id: parseInt(studentId),
+                positions: positions,
+                colors: colors
+            };
+            
+            // Usar a API de download do editor que suporta posições personalizadas
+            $.ajax({
+                url: '/api/certificate/download',
+                method: 'POST',
+                contentType: 'application/json',
+                headers: {
+                    'X-CSRFToken': $('meta[name=csrf-token]').attr('content')
+                },
+                data: JSON.stringify(requestData),
+                xhrFields: {
+                    responseType: 'blob'
+                },
+                success: function(data, status, xhr) {
+                    // Criar link para download
+                    const blob = new Blob([data], { type: 'image/png' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `Certificado_{{ student.name.replace(' ', '_') }}_${new Date().toISOString().split('T')[0]}_personalizado.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                },
+                error: function() {
+                    // Fallback para o método antigo se a API falhar
+                    downloadWithColorsLegacy(studentId);
+                }
+            });
+        } else {
+            // Se não há posições salvas, usar o método antigo
+            downloadWithColorsLegacy(studentId);
+        }
+    }).catch(function(error) {
+        // Se não há cores configuradas, mostrar alerta e abrir editor
+        alert(error.message);
+        openCertificateEditor();
+    });
+}
+
+// Função de fallback para download com método antigo
+function downloadWithColorsLegacy(studentId) {
+    // Exigir que as cores sejam configuradas no editor
+    alert('Configure as cores no editor de certificado antes de fazer o download.');
+    openCertificateEditor();
+    // Criar link temporário para download
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = `Certificado_{{ student.name.replace(' ', '_') }}_${new Date().toISOString().split('T')[0]}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+</script>
+{% endblock %}

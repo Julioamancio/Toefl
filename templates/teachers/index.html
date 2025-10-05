@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block title %}Professores - TOEFL{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-person-badge me-2"></i>Professores</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#createTeacherModal">
+                <i class="bi bi-plus-circle me-1"></i>Novo Professor
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-danger" id="deleteSelectedBtn" disabled>
+                <i class="bi bi-trash me-1"></i>Deletar Selecionados
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Estatísticas -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="card-title">{{ teachers|length }}</h4>
+                        <p class="card-text">Total de Professores</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-people fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="card-title">{{ teachers|length }}</h4>
+                        <p class="card-text">Professores Ativos</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-check-circle fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de Professores -->
+<div class="card shadow">
+    <div class="card-header">
+        <h5 class="mb-0">Lista de Professores</h5>
+    </div>
+    <div class="card-body">
+        {% if teachers %}
+        <form id="deleteMultipleForm" method="POST" action="{{ url_for('delete_multiple_teachers') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="50">
+                                <input type="checkbox" id="selectAll" class="form-check-input">
+                            </th>
+                            <th>Nome</th>
+                            <th class="text-center">Alunos</th>
+                            <th class="text-center">Criado em</th>
+                            <th class="text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for teacher in teachers %}
+                        <tr{% if loop.index % 2 == 0 %} class="table-light"{% endif %}>
+                            <td>
+                                <input type="checkbox" name="teacher_ids" value="{{ teacher.id }}" class="form-check-input teacher-checkbox">
+                            </td>
+                            <td>
+                                <strong>{{ teacher.name }}</strong>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-info">{{ teacher.students|length }}</span>
+                            </td>
+                            <td class="text-center">
+                                <small class="text-muted">{{ teacher.created_at.strftime('%d/%m/%Y') }}</small>
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" 
+                                            onclick="editTeacher({{ teacher.id }}, '{{ teacher.name }}')">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" 
+                                            onclick="deleteTeacher({{ teacher.id }}, '{{ teacher.name }}')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </form>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-person-badge fs-1 text-muted"></i>
+            <h5 class="mt-3 text-muted">Nenhum professor cadastrado</h5>
+            <p class="text-muted">Clique em "Novo Professor" para começar.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal Criar Professor -->
+<div class="modal fade" id="createTeacherModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('create_teacher') }}">
+                {{ form.hidden_tag() }}
+                <div class="modal-header">
+                    <h5 class="modal-title">Novo Professor</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        {{ form.name.label(class="form-label") }}
+                        {{ form.name(class="form-control") }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    {{ form.submit(class="btn btn-primary") }}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Editar Professor -->
+<div class="modal fade" id="editTeacherModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="editTeacherForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar Professor</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit_name" class="form-label">Nome do Professor</label>
+                        <input type="text" class="form-control" id="edit_name" name="name" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Confirmar Deleção -->
+<div class="modal fade" id="deleteTeacherModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Deleção</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja deletar o professor <strong id="deleteTeacherName"></strong>?</p>
+                <p class="text-muted small">Esta ação não pode ser desfeita.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form method="POST" id="deleteTeacherForm" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-danger">Deletar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Seleção múltipla
+document.getElementById('selectAll').addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.teacher-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = this.checked;
+    });
+    updateDeleteButton();
+});
+
+document.querySelectorAll('.teacher-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', updateDeleteButton);
+});
+
+function updateDeleteButton() {
+    const checkedBoxes = document.querySelectorAll('.teacher-checkbox:checked');
+    const deleteBtn = document.getElementById('deleteSelectedBtn');
+    deleteBtn.disabled = checkedBoxes.length === 0;
+}
+
+// Deletar múltiplos
+document.getElementById('deleteSelectedBtn').addEventListener('click', function() {
+    const checkedBoxes = document.querySelectorAll('.teacher-checkbox:checked');
+    if (checkedBoxes.length > 0) {
+        if (confirm(`Tem certeza que deseja deletar ${checkedBoxes.length} professor(es) selecionado(s)?`)) {
+            // Adicionar debug para verificar o token CSRF
+            const form = document.getElementById('deleteMultipleForm');
+            const csrfToken = form.querySelector('input[name="csrf_token"]').value;
+            console.log('CSRF Token:', csrfToken);
+            console.log('Form action:', form.action);
+            console.log('Selected teacher IDs:', Array.from(checkedBoxes).map(cb => cb.value));
+            form.submit();
+        }
+    }
+});
+
+// Função de teste para debug
+function testMultipleDelete() {
+    const form = document.getElementById('deleteMultipleForm');
+    const csrfToken = form.querySelector('input[name="csrf_token"]').value;
+    console.log('Test - CSRF Token:', csrfToken);
+    console.log('Test - Form action:', form.action);
+    
+    // Simular seleção de um professor para teste
+    const firstCheckbox = document.querySelector('.teacher-checkbox');
+    if (firstCheckbox) {
+        firstCheckbox.checked = true;
+        console.log('Test - Selected teacher ID:', firstCheckbox.value);
+        form.submit();
+    } else {
+        console.log('No teachers available for testing');
+    }
+}
+
+// Editar professor
+function editTeacher(id, name) {
+    document.getElementById('editTeacherForm').action = `/professores/${id}/editar`;
+    document.getElementById('edit_name').value = name;
+    
+    new bootstrap.Modal(document.getElementById('editTeacherModal')).show();
+}
+
+// Deletar professor
+function deleteTeacher(id, name) {
+    document.getElementById('deleteTeacherName').textContent = name;
+    document.getElementById('deleteTeacherForm').action = `/professores/${id}/deletar`;
+    
+    new bootstrap.Modal(document.getElementById('deleteTeacherModal')).show();
+}
+</script>
+{% endblock %}

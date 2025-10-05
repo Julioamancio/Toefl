@@ -1,0 +1,1195 @@
+{% extends "base.html" %}
+
+{% block title %}Administração - TOEFL{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-shield-check me-2"></i>Administração</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#createUserModal">
+                <i class="bi bi-person-plus me-1"></i>Novo Usuário
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Estatísticas do Sistema -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="mb-0">{{ users|length }}</h4>
+                        <p class="mb-0">Usuários Totais</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-people" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="mb-0">{{ active_users }}</h4>
+                        <p class="mb-0">Usuários Ativos</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-check-circle" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="mb-0">{{ total_uploads }}</h4>
+                        <p class="mb-0">Uploads Realizados</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-cloud-upload" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-dark">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="mb-0">{{ total_students }}</h4>
+                        <p class="mb-0">Alunos Cadastrados</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-mortarboard" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ferramentas Administrativas -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-danger">
+            <i class="bi bi-tools me-2"></i>Ferramentas Administrativas
+        </h6>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="alert alert-warning" role="alert">
+                    <h6 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Reset Completo do Banco de Dados</h6>
+                    <p class="mb-2">Esta ação irá:</p>
+                    <ul class="mb-2">
+                        <li>Excluir TODOS os dados do banco de dados</li>
+                        <li>Remover todas as tabelas existentes</li>
+                        <li>Recriar as tabelas do zero</li>
+                        <li>Esta ação é <strong>IRREVERSÍVEL</strong></li>
+                    </ul>
+                    <hr>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="confirmDatabaseReset()">
+                        <i class="bi bi-trash3 me-1"></i>Reset Completo do Banco
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="alert alert-success" role="alert">
+                    <h6 class="alert-heading"><i class="bi bi-magic me-2"></i>Reset Perfeito com Backup</h6>
+                    <p class="mb-2">Esta ação irá:</p>
+                    <ul class="mb-2">
+                        <li><strong>Zerar completamente</strong> o banco de dados</li>
+                        <li><strong>Recriar schema perfeito</strong> com regras corretas</li>
+                        <li><strong>Importar dados</strong> do backup export_20250928_085940.json</li>
+                        <li><strong>Corrigir automaticamente</strong> inconsistências de teacher_id</li>
+                        <li><strong>Garantir integridade</strong> de todas as chaves estrangeiras</li>
+                    </ul>
+                    <hr>
+                    <button type="button" class="btn btn-success btn-sm" onclick="confirmPerfectReset()" id="perfectResetBtn">
+                        <i class="bi bi-magic me-1"></i>Reset Perfeito
+                    </button>
+                    <div id="perfectResetProgress" class="mt-2" style="display: none;">
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 100%"></div>
+                        </div>
+                        <small class="text-muted">Executando reset perfeito...</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="alert alert-info" role="alert">
+                    <h6 class="alert-heading"><i class="bi bi-info-circle me-2"></i>Backup e Restauração</h6>
+                    <p class="mb-2">Funcionalidades disponíveis:</p>
+                    <ul class="mb-2">
+                        <li>Fazer backup dos dados atuais</li>
+                        <li>Restaurar dados de backup</li>
+                        <li>Correção automática de dados</li>
+                    </ul>
+                    <hr>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-primary" onclick="createBackup()">
+                            <i class="bi bi-download me-1"></i>Backup
+                        </button>
+                        <button type="button" class="btn btn-outline-success" onclick="showRestoreModal()">
+                            <i class="bi bi-upload me-1"></i>Restaurar
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <!-- Espaço reservado para futuras funcionalidades -->
+            </div>
+        </div>
+        
+        <!-- Nova seção para Correção Automática -->
+        <div class="row mt-3">
+            <div class="col-md-12">
+                <div class="alert alert-success" role="alert">
+                    <h6 class="alert-heading"><i class="bi bi-gear-fill me-2"></i>Correção Automática de Dados</h6>
+                    <p class="mb-2">Esta ferramenta irá:</p>
+                    <ul class="mb-2">
+                        <li>Corrigir turmas sem <code>meta_label</code></li>
+                        <li>Recalcular automaticamente o <strong>Listening CSA</strong> de todos os alunos</li>
+                        <li>Verificar e corrigir inconsistências nos dados</li>
+                        <li>Gerar relatório detalhado das correções</li>
+                    </ul>
+                    <hr>
+                    <button type="button" class="btn btn-success btn-sm" onclick="runAutoFix()" id="autoFixBtn">
+                        <i class="bi bi-magic me-1"></i>Executar Correção Automática
+                    </button>
+                    <div id="autoFixProgress" class="mt-2" style="display: none;">
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                        </div>
+                        <small class="text-muted">Executando correções automáticas...</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Importação de Planilhas (Multi-abas) -->
+        <div class="row mt-3">
+            <div class="col-md-12">
+                <div class="alert alert-primary" role="alert">
+                    <h6 class="alert-heading"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Importar Planilha de Alunos (Multi-abas)</h6>
+                    <p class="mb-2">Importe um arquivo Excel com múltiplas abas. O sistema criará as turmas automaticamente por aba e colocará os alunos na página <strong>Alunos</strong>, mantendo o fluxo manual de edição como sempre foi.</p>
+                    <hr>
+                    <a href="{{ url_for('admin_import') }}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-cloud-upload me-1"></i>Importar Planilha (multi-abas)
+                    </a>
+                    <a href="{{ url_for('students') }}" class="btn btn-outline-secondary btn-sm ms-2">
+                        <i class="bi bi-people me-1"></i>Ir para Alunos
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Verificação/Atualização de Schema para Importação -->
+        <div class="row mt-3">
+            <div class="col-md-12">
+                <div class="alert alert-secondary" role="alert">
+                    <h6 class="alert-heading"><i class="bi bi-database-gear me-2"></i>Preparar Banco para Importação</h6>
+                    <p class="mb-2">Verifica e adiciona colunas essenciais (<code>import_sheet_name</code>, <code>turma_meta</code>, <code>listening_csa_points</code>) em <strong>students</strong>, <code>meta_label</code> em <strong>classes</strong>, e garante a tabela <strong>computed_levels</strong>.</p>
+                    <hr>
+                    <form method="post" action="{{ url_for('ensure_schema') }}">
+                        <button type="submit" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-gear me-1"></i>Verificar/Atualizar Schema
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Nova seção para Correção de Níveis CEFR -->
+        <div class="row mt-3">
+            <div class="col-md-12">
+                <div class="alert alert-warning" role="alert">
+                    <h6 class="alert-heading"><i class="bi bi-award-fill me-2"></i>Correção de Níveis CEFR</h6>
+                    <p class="mb-2">Esta ferramenta irá:</p>
+                    <ul class="mb-2">
+                        <li>Recalcular todos os <strong>níveis CEFR</strong> dos estudantes</li>
+                        <li>Atualizar dados da página <strong>Dashboard (/dash)</strong></li>
+                        <li>Corrigir níveis CEFR na página <strong>Alunos (/alunos)</strong></li>
+                        <li>Aplicar regras de cálculo baseadas em pontuações</li>
+                        <li>Gerar relatório detalhado das atualizações</li>
+                    </ul>
+                    <hr>
+                    <button type="button" class="btn btn-warning btn-sm" onclick="runCefrFix()" id="cefrFixBtn">
+                        <i class="bi bi-award me-1"></i>Corrigir Níveis CEFR
+                    </button>
+                    <div id="cefrFixProgress" class="mt-2" style="display: none;">
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" style="width: 100%"></div>
+                        </div>
+                        <small class="text-muted">Recalculando níveis CEFR...</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Nova seção para Correção de Asteriscos CEFR -->
+        <div class="row mt-3">
+            <div class="col-md-12">
+                <div class="alert alert-danger" role="alert">
+                    <h6 class="alert-heading"><i class="bi bi-exclamation-triangle-fill me-2"></i>Correção de Asteriscos (*) CEFR</h6>
+                    <p class="mb-2">Esta ferramenta irá:</p>
+                    <ul class="mb-2">
+                        <li>Identificar todos os campos CEFR com valor <strong>"*"</strong></li>
+                        <li>Corrigir <strong>Reading CEFR</strong>, <strong>LFM CEFR</strong> e <strong>Listening CEFR</strong></li>
+                        <li>Aplicar cálculos corretos baseados nas pontuações existentes</li>
+                        <li>Atualizar tanto a página <strong>Alunos (/alunos)</strong> quanto as <strong>páginas de detalhes</strong></li>
+                        <li>Gerar relatório detalhado das correções realizadas</li>
+                    </ul>
+                    <hr>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="fixAsteriskCefr()" id="asteriskFixBtn">
+                        <i class="bi bi-tools me-1"></i>Corrigir Asteriscos CEFR
+                    </button>
+                    <div id="asteriskFixProgress" class="mt-2" style="display: none;">
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-danger" role="progressbar" style="width: 100%"></div>
+                        </div>
+                        <small class="text-muted">Corrigindo asteriscos CEFR...</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gerenciamento de Usuários -->
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">
+            <i class="bi bi-people me-2"></i>Gerenciar Usuários
+        </h6>
+    </div>
+    <div class="card-body p-0">
+        {% if users %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Usuário</th>
+                            <th>Email</th>
+                            <th class="text-center">Tipo</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center">Último Acesso</th>
+                            <th class="text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2">
+                                            {{ user.username[0].upper() }}
+                                        </div>
+                                        <div>
+                                            <strong>{{ user.username }}</strong>
+                                            <br>
+                                            <small class="text-muted">Criado em {{ user.created_at.strftime('%d/%m/%Y') if user.created_at else 'N/A' }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="text-muted">{{ user.email or 'Não informado' }}</span>
+                                </td>
+                                <td class="text-center">
+                                    {% if user.is_admin %}
+                                        <span class="badge bg-danger">Administrador</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Usuário</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if user.is_active %}
+                                        <span class="badge bg-success">Ativo</span>
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark">Inativo</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <small class="text-muted">
+                                        {{ user.last_login.strftime('%d/%m/%Y %H:%M') if user.last_login else 'Nunca' }}
+                                    </small>
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button type="button" class="btn btn-outline-info" 
+                                                data-bs-toggle="tooltip" title="Editar Usuário"
+                                                onclick="editUser({{ user.id }}, '{{ user.username }}', '{{ user.email or '' }}', {{ user.is_admin|lower }}, {{ user.is_active|lower }})">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        {% if user.id != current_user.id %}
+                                            <button type="button" class="btn btn-outline-warning" 
+                                                    data-bs-toggle="tooltip" title="{{ 'Desativar' if user.is_active else 'Ativar' }} Usuário"
+                                                    onclick="toggleUserStatus({{ user.id }}, {{ user.is_active|lower }})">
+                                                <i class="bi bi-{{ 'pause' if user.is_active else 'play' }}"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-outline-danger" 
+                                                    data-bs-toggle="tooltip" title="Excluir Usuário"
+                                                    onclick="deleteUser({{ user.id }}, '{{ user.username }}')">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-people text-muted" style="font-size: 4rem;"></i>
+                <h4 class="text-muted mt-3">Nenhum usuário encontrado</h4>
+                <p class="text-muted">Crie o primeiro usuário para começar.</p>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createUserModal">
+                    <i class="bi bi-person-plus me-1"></i>Criar Primeiro Usuário
+                </button>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Logs de Atividade Recente -->
+<div class="card shadow">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">
+            <i class="bi bi-clock-history me-2"></i>Atividade Recente
+        </h6>
+    </div>
+    <div class="card-body">
+        <div class="timeline">
+            <div class="timeline-item">
+                <div class="timeline-marker bg-primary"></div>
+                <div class="timeline-content">
+                    <h6 class="mb-1">Upload de dados realizado</h6>
+                    <p class="text-muted mb-1">Usuário admin importou 25 alunos da Turma A</p>
+                    <small class="text-muted">Há 2 horas</small>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-marker bg-success"></div>
+                <div class="timeline-content">
+                    <h6 class="mb-1">Nova turma criada</h6>
+                    <p class="text-muted mb-1">Turma "Inglês Avançado 2024" foi criada</p>
+                    <small class="text-muted">Há 5 horas</small>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="timeline-marker bg-info"></div>
+                <div class="timeline-content">
+                    <h6 class="mb-1">Usuário criado</h6>
+                    <p class="text-muted mb-1">Novo usuário "professor1" foi adicionado ao sistema</p>
+                    <small class="text-muted">Ontem</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Criar/Editar Usuário -->
+<div class="modal fade" id="createUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="userModalTitle">Novo Usuário</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('create_user') }}" id="userForm">
+                <div class="modal-body">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.username.label(class="form-label fw-bold") }}
+                        {{ form.username(class="form-control" + (" is-invalid" if form.username.errors else "")) }}
+                        {% if form.username.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.username.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Nome único para login no sistema</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.email.label(class="form-label fw-bold") }}
+                        {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else "")) }}
+                        {% if form.email.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.email.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Email para contato (opcional)</div>
+                    </div>
+                    
+                    <div class="mb-3" id="passwordField">
+                        {{ form.password.label(class="form-label fw-bold") }}
+                        {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else "")) }}
+                        {% if form.password.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.password.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Senha deve ter pelo menos 6 caracteres</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            {{ form.is_admin(class="form-check-input") }}
+                            {{ form.is_admin.label(class="form-check-label") }}
+                        </div>
+                        <div class="form-text">Administradores podem gerenciar usuários e acessar todas as funcionalidades</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            {{ form.is_active(class="form-check-input") }}
+                            {{ form.is_active.label(class="form-check-label") }}
+                        </div>
+                        <div class="form-text">Usuários inativos não podem fazer login</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="userSubmitBtn">
+                        <i class="bi bi-check-circle me-1"></i>Criar Usuário
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmTitle">Confirmar Ação</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="confirmMessage">
+                <!-- Mensagem será inserida via JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmBtn">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Restaurar Backup -->
+<div class="modal fade" id="restoreBackupModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-upload me-2"></i>Restaurar Backup
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning" role="alert">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Atenção!</strong> Esta ação irá substituir todos os dados atuais pelos dados do backup selecionado.
+                </div>
+                
+                <form id="restoreBackupForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="backupFile" class="form-label">
+                            <i class="bi bi-file-earmark-text me-1"></i>Selecionar Arquivo de Backup
+                        </label>
+                        <input type="file" class="form-control" id="backupFile" name="backup_file" accept=".json" required>
+                        <div class="form-text">
+                            Apenas arquivos JSON são aceitos. Tamanho máximo: 50MB
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6><i class="bi bi-info-circle me-1"></i>O que será restaurado:</h6>
+                        <ul class="list-unstyled ms-3">
+                            <li><i class="bi bi-check-circle text-success me-1"></i>Professores</li>
+                            <li><i class="bi bi-check-circle text-success me-1"></i>Turmas</li>
+                            <li><i class="bi bi-check-circle text-success me-1"></i>Estudantes</li>
+                            <li><i class="bi bi-check-circle text-success me-1"></i>Configurações</li>
+                        </ul>
+                    </div>
+                </form>
+                
+                <!-- Progress Bar -->
+                <div id="restoreProgress" class="progress mb-3" style="display: none;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" style="width: 100%">
+                        Restaurando backup...
+                    </div>
+                </div>
+                
+                <!-- Result Message -->
+                <div id="restoreResult" style="display: none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="restoreBtn" onclick="executeRestore()">
+                    <i class="bi bi-upload me-1"></i>Restaurar Backup
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Resetar modal ao fechar - verificar se existe
+    const createUserModal = document.getElementById('createUserModal');
+    if (createUserModal) {
+        createUserModal.addEventListener('hidden.bs.modal', function() {
+            resetUserModal();
+        });
+    }
+});
+
+// Função para resetar o modal de usuário
+function resetUserModal() {
+    const userModalTitle = document.getElementById('userModalTitle');
+    const userSubmitBtn = document.getElementById('userSubmitBtn');
+    const userForm = document.getElementById('userForm');
+    const passwordField = document.getElementById('passwordField');
+    
+    if (userModalTitle) userModalTitle.textContent = 'Novo Usuário';
+    if (userSubmitBtn) userSubmitBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Criar Usuário';
+    if (userForm) {
+        userForm.action = '{{ url_for("create_user") }}';
+        userForm.reset();
+    }
+    if (passwordField) passwordField.style.display = 'block';
+    
+    // Remover classes de erro
+    const inputs = document.querySelectorAll('.is-invalid');
+    inputs.forEach(input => input.classList.remove('is-invalid'));
+    
+    // Remover mensagens de erro
+    const errorMessages = document.querySelectorAll('.invalid-feedback');
+    errorMessages.forEach(msg => msg.remove());
+}
+
+// Função para editar usuário
+function editUser(id, username, email, isAdmin, isActive) {
+    const userModalTitle = document.getElementById('userModalTitle');
+    const userSubmitBtn = document.getElementById('userSubmitBtn');
+    const userForm = document.getElementById('userForm');
+    const passwordField = document.getElementById('passwordField');
+    const usernameField = document.getElementById('username');
+    const emailField = document.getElementById('email');
+    const isAdminField = document.getElementById('is_admin');
+    const isActiveField = document.getElementById('is_active');
+    
+    if (userModalTitle) userModalTitle.textContent = 'Editar Usuário';
+    if (userSubmitBtn) userSubmitBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Salvar Alterações';
+    if (userForm) userForm.action = `/admin/users/${id}/edit`;
+    if (passwordField) passwordField.style.display = 'none';
+    
+    // Preencher campos
+    if (usernameField) usernameField.value = username;
+    if (emailField) emailField.value = email;
+    if (isAdminField) isAdminField.checked = isAdmin;
+    if (isActiveField) isActiveField.checked = isActive;
+    
+    // Mostrar modal
+    const createUserModal = document.getElementById('createUserModal');
+    if (createUserModal) {
+        const modal = new bootstrap.Modal(createUserModal);
+        modal.show();
+    }
+}
+
+// Função para alternar status do usuário
+function toggleUserStatus(userId, currentStatus) {
+    const action = currentStatus ? 'desativar' : 'ativar';
+    const title = currentStatus ? 'Desativar Usuário' : 'Ativar Usuário';
+    const message = `Tem certeza que deseja ${action} este usuário?`;
+    
+    showConfirmModal(title, message, function() {
+        // Fazer requisição para alternar status
+        fetch(`/admin/users/${userId}/toggle-status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Erro ao alterar status do usuário.');
+            }
+        })
+        .catch(error => {
+            alert('Erro ao alterar status do usuário.');
+        });
+    });
+}
+
+// Função para excluir usuário
+function deleteUser(userId, username) {
+    const title = 'Excluir Usuário';
+    const message = `Tem certeza que deseja excluir o usuário "${username}"? Esta ação não pode ser desfeita.`;
+    
+    showConfirmModal(title, message, function() {
+        // Fazer requisição para excluir usuário
+        fetch(`/admin/users/${userId}/delete`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Erro ao excluir usuário.');
+            }
+        })
+        .catch(error => {
+            alert('Erro ao excluir usuário.');
+        });
+    });
+}
+
+// Função para mostrar modal de confirmação
+function showConfirmModal(title, message, callback) {
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMessage').textContent = message;
+    
+    const confirmBtn = document.getElementById('confirmBtn');
+    confirmBtn.onclick = function() {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('confirmModal'));
+        modal.hide();
+        callback();
+    };
+    
+    const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+    modal.show();
+}
+
+// Função para confirmar reset do banco de dados
+function confirmDatabaseReset() {
+    const title = 'ATENÇÃO: Reset Completo do Banco de Dados';
+    const message = 'Esta ação irá EXCLUIR PERMANENTEMENTE todos os dados do banco de dados, incluindo:\n\n' +
+                   '• Todos os usuários (exceto o atual)\n' +
+                   '• Todos os estudantes e suas informações\n' +
+                   '• Todos os professores e turmas\n' +
+                   '• Todos os níveis computados\n' +
+                   '• Todos os uploads e arquivos\n\n' +
+                   'Esta ação é IRREVERSÍVEL!\n\n' +
+                   'Tem certeza que deseja continuar?';
+    
+    showConfirmModal(title, message, function() {
+        performDatabaseReset();
+    });
+}
+
+// Função para executar o reset do banco de dados
+function performDatabaseReset() {
+    const resetBtn = document.querySelector('[onclick="confirmDatabaseReset()"]');
+    const originalText = resetBtn.innerHTML;
+    
+    // Mostrar loading
+    resetBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Executando Reset...';
+    resetBtn.disabled = true;
+    
+    fetch('/admin/database/reset', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Reset do banco de dados executado com sucesso!\n\nTodos os dados foram removidos e as tabelas foram recriadas.');
+            location.reload();
+        } else {
+            alert('Erro ao executar reset do banco de dados: ' + (data.error || 'Erro desconhecido'));
+            resetBtn.innerHTML = originalText;
+            resetBtn.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao executar reset do banco de dados. Verifique o console para mais detalhes.');
+        resetBtn.innerHTML = originalText;
+        resetBtn.disabled = false;
+    });
+}
+
+// Função para criar backup
+function createBackup() {
+    const backupBtn = document.querySelector('[onclick="createBackup()"]');
+    const originalText = backupBtn.innerHTML;
+    
+    backupBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Criando...';
+    backupBtn.disabled = true;
+    
+    fetch('/admin/database/backup', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Backup criado com sucesso!\n\nArquivo: ' + data.filename);
+        } else {
+            alert('Erro ao criar backup: ' + (data.error || 'Erro desconhecido'));
+        }
+        backupBtn.innerHTML = originalText;
+        backupBtn.disabled = false;
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao criar backup. Verifique o console para mais detalhes.');
+        backupBtn.innerHTML = originalText;
+        backupBtn.disabled = false;
+    });
+}
+
+// Função para mostrar modal de restauração
+function showRestoreModal() {
+    const modal = new bootstrap.Modal(document.getElementById('restoreBackupModal'));
+    modal.show();
+}
+
+// Função para executar restauração de backup
+function executeRestore() {
+    const fileInput = document.getElementById('backupFile');
+    const restoreBtn = document.getElementById('restoreBtn');
+    const progressDiv = document.getElementById('restoreProgress');
+    const resultDiv = document.getElementById('restoreResult');
+    
+    // Verificar se um arquivo foi selecionado
+    if (!fileInput.files || fileInput.files.length === 0) {
+        showAlert('Por favor, selecione um arquivo de backup.', 'warning', resultDiv);
+        return;
+    }
+    
+    const file = fileInput.files[0];
+    
+    // Verificar tamanho do arquivo (50MB max)
+    if (file.size > 50 * 1024 * 1024) {
+        showAlert('Arquivo muito grande. Tamanho máximo: 50MB', 'danger', resultDiv);
+        return;
+    }
+    
+    // Confirmar ação
+    if (!confirm('Tem certeza que deseja restaurar este backup?\n\nTodos os dados atuais serão substituídos!')) {
+        return;
+    }
+    
+    // Preparar FormData
+    const formData = new FormData();
+    formData.append('backup_file', file);
+    
+    // Mostrar progresso
+    restoreBtn.disabled = true;
+    restoreBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Restaurando...';
+    progressDiv.style.display = 'block';
+    resultDiv.style.display = 'none';
+    
+    // Executar upload e restauração
+    fetch('/admin/restore-backup', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        progressDiv.style.display = 'none';
+        
+        if (data.success) {
+            showAlert(`✅ ${data.message}`, 'success', resultDiv);
+            
+            // Fechar modal após 2 segundos e recarregar página
+            setTimeout(() => {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('restoreBackupModal'));
+                modal.hide();
+                location.reload();
+            }, 2000);
+        } else {
+            showAlert(`❌ ${data.message}`, 'danger', resultDiv);
+        }
+    })
+    .catch(error => {
+        progressDiv.style.display = 'none';
+        showAlert(`❌ Erro ao restaurar backup: ${error.message}`, 'danger', resultDiv);
+    })
+    .finally(() => {
+        restoreBtn.disabled = false;
+        restoreBtn.innerHTML = '<i class="bi bi-upload me-1"></i>Restaurar Backup';
+    });
+}
+
+// Função auxiliar para mostrar alertas
+function showAlert(message, type, container) {
+    container.innerHTML = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    container.style.display = 'block';
+}
+
+// Função para executar correção automática
+function runAutoFix() {
+    const autoFixBtn = document.getElementById('autoFixBtn');
+    const progressDiv = document.getElementById('autoFixProgress');
+    const originalText = autoFixBtn.innerHTML;
+    
+    // Confirmar ação
+    if (!confirm('Deseja executar a correção automática?\n\nEsta ação irá:\n- Corrigir turmas sem meta_label\n- Recalcular Listening CSA de todos os alunos\n- Verificar inconsistências nos dados')) {
+        return;
+    }
+    
+    // Mostrar progresso
+    autoFixBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Executando...';
+    autoFixBtn.disabled = true;
+    progressDiv.style.display = 'block';
+    
+    fetch('/admin/auto-fix', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        progressDiv.style.display = 'none';
+        autoFixBtn.innerHTML = originalText;
+        autoFixBtn.disabled = false;
+        
+        if (data.overall_success) {
+            let message = `Correção automática executada com sucesso!\n\n`;
+            message += `Total de correções: ${data.total_corrections}\n`;
+            message += `Tempo de execução: ${data.duration_seconds.toFixed(2)}s\n\n`;
+            
+            if (data.class_fixes && data.class_fixes.corrections_made > 0) {
+                message += `Turmas corrigidas: ${data.class_fixes.corrections_made}\n`;
+            }
+            
+            if (data.csa_fixes) {
+                message += `Alunos com Listening CSA corrigido: ${data.csa_fixes.corrections_made}\n`;
+            }
+            
+            // Mostrar mensagem mesmo quando não há correções
+            if (data.total_corrections === 0) {
+                message += `\n✅ Todos os dados já estão corretos!\nNenhuma correção foi necessária.`;
+            }
+            
+            alert(message);
+            
+            // Recarregar a página para mostrar as atualizações
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            let errorMessage = `Erro durante a correção automática:\n\n${data.message || 'Erro desconhecido'}`;
+            if (data.errors && data.errors.length > 0) {
+                errorMessage += `\n\nErros encontrados:\n${data.errors.join('\n')}`;
+            }
+            alert(errorMessage);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        progressDiv.style.display = 'none';
+        autoFixBtn.innerHTML = originalText;
+        autoFixBtn.disabled = false;
+        alert('Erro ao executar correção automática. Verifique o console para mais detalhes.');
+    });
+}
+
+// Função para executar correção de níveis CEFR
+function runCefrFix() {
+    const cefrFixBtn = document.getElementById('cefrFixBtn');
+    const progressDiv = document.getElementById('cefrFixProgress');
+    const originalText = cefrFixBtn.innerHTML;
+    
+    // Confirmar ação
+    if (!confirm('Deseja executar a correção de níveis CEFR?\n\nEsta ação irá:\n- Recalcular todos os níveis CEFR dos estudantes\n- Atualizar dados do Dashboard (/dash)\n- Corrigir níveis na página Alunos (/alunos)')) {
+        return;
+    }
+    
+    // Mostrar progresso
+    cefrFixBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Executando...';
+    cefrFixBtn.disabled = true;
+    progressDiv.style.display = 'block';
+    
+    fetch('/admin/cefr-fix', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        progressDiv.style.display = 'none';
+        cefrFixBtn.innerHTML = originalText;
+        cefrFixBtn.disabled = false;
+        
+        if (data.success) {
+            let message = `Correção de níveis CEFR executada com sucesso!\n\n`;
+            message += `Total de estudantes processados: ${data.details.total_students}\n`;
+            message += `Níveis atualizados: ${data.details.updated_count}\n`;
+            message += `Níveis criados: ${data.details.created_count}\n`;
+            message += `Tempo de execução: ${data.details.execution_time}s\n`;
+            
+            if (data.details.error_count > 0) {
+                message += `\nErros encontrados: ${data.details.error_count}`;
+            }
+            
+            alert(message);
+            
+            // Recarregar a página para mostrar as atualizações
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            alert(`Erro durante a correção de níveis CEFR:\n\n${data.message || 'Erro desconhecido'}`);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        progressDiv.style.display = 'none';
+        cefrFixBtn.innerHTML = originalText;
+        cefrFixBtn.disabled = false;
+        alert('Erro ao executar correção de níveis CEFR. Verifique o console para mais detalhes.');
+    });
+}
+
+function fixAsteriskCefr() {
+    const asteriskFixBtn = document.getElementById('asteriskFixBtn');
+    const progressDiv = document.getElementById('asteriskFixProgress');
+    const originalText = asteriskFixBtn.innerHTML;
+    
+    // Confirmar ação
+    if (!confirm('Deseja executar a correção de asteriscos (*) CEFR?\n\nEsta ação irá:\n- Identificar todos os campos CEFR com valor "*"\n- Corrigir Reading CEFR, LFM CEFR e Listening CEFR\n- Atualizar páginas Alunos (/alunos) e detalhes')) {
+        return;
+    }
+    
+    // Mostrar progresso
+    asteriskFixBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Executando...';
+    asteriskFixBtn.disabled = true;
+    progressDiv.style.display = 'block';
+    
+    fetch('/admin/fix-asterisk-cefr', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        progressDiv.style.display = 'none';
+        asteriskFixBtn.innerHTML = originalText;
+        asteriskFixBtn.disabled = false;
+        
+        if (data.success) {
+            let message = `Correção de asteriscos CEFR executada com sucesso!\n\n`;
+            message += `Correções realizadas: ${data.corrections_made}\n`;
+            message += `Registros verificados: ${data.total_checked}\n`;
+            
+            if (data.remaining_asterisks > 0) {
+                message += `Asteriscos restantes: ${data.remaining_asterisks} (estudantes sem pontuações)\n`;
+            } else {
+                message += `Todos os asteriscos foram corrigidos!\n`;
+            }
+            
+            alert(message);
+            
+            // Recarregar a página para mostrar as atualizações
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            alert(`Erro durante a correção de asteriscos CEFR:\n\n${data.message || 'Erro desconhecido'}`);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        progressDiv.style.display = 'none';
+        asteriskFixBtn.innerHTML = originalText;
+        asteriskFixBtn.disabled = false;
+        alert('Erro ao executar correção de asteriscos CEFR. Verifique o console para mais detalhes.');
+    });
+}
+
+function confirmPerfectReset() {
+    if (confirm('🚨 ATENÇÃO: RESET PERFEITO 🚨\n\nEsta ação irá:\n✅ ZERAR COMPLETAMENTE o banco de dados\n✅ RECRIAR schema perfeito com regras corretas\n✅ IMPORTAR dados do backup export_20250928_085940.json\n✅ CORRIGIR automaticamente inconsistências de teacher_id\n✅ GARANTIR integridade de todas as chaves estrangeiras\n\nEsta ação é IRREVERSÍVEL!\n\nDeseja continuar?')) {
+        runPerfectReset();
+    }
+}
+
+function runPerfectReset() {
+    const perfectResetBtn = document.getElementById('perfectResetBtn');
+    const progressDiv = document.getElementById('perfectResetProgress');
+    const originalText = perfectResetBtn.innerHTML;
+    
+    // Mostrar progresso
+    perfectResetBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Executando Reset Perfeito...';
+    perfectResetBtn.disabled = true;
+    progressDiv.style.display = 'block';
+    
+    fetch('/admin/reset-perfect', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        progressDiv.style.display = 'none';
+        perfectResetBtn.innerHTML = originalText;
+        perfectResetBtn.disabled = false;
+        
+        if (data.success) {
+            let message = `🎉 RESET PERFEITO EXECUTADO COM SUCESSO! 🎉\n\n`;
+            message += `✅ Banco de dados zerado e recriado\n`;
+            message += `✅ Schema perfeito implementado\n`;
+            message += `✅ Dados do backup importados\n`;
+            message += `✅ Inconsistências corrigidas\n`;
+            message += `✅ Integridade garantida\n\n`;
+            message += `A aplicação está pronta para uso!`;
+            
+            alert(message);
+            
+            // Recarregar a página para mostrar as atualizações
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        } else {
+            alert(`❌ Erro durante o reset perfeito:\n\n${data.message || 'Erro desconhecido'}\n\nVerifique os logs para mais detalhes.`);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        progressDiv.style.display = 'none';
+        perfectResetBtn.innerHTML = originalText;
+        perfectResetBtn.disabled = false;
+        alert('❌ Erro ao executar reset perfeito. Verifique o console para mais detalhes.');
+    });
+}
+</script>
+
+<style>
+.avatar-sm {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge {
+    font-size: 0.75rem;
+}
+
+.btn-group-sm > .btn {
+    padding: 0.25rem 0.5rem;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(33, 40, 50, 0.15);
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+/* Timeline Styles */
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.timeline-item:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: -22px;
+    top: 20px;
+    height: calc(100% + 10px);
+    width: 2px;
+    background-color: #e9ecef;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -26px;
+    top: 4px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 2px #e9ecef;
+}
+
+.timeline-content {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 3px solid #007bff;
+}
+</style>
+{% endblock %}

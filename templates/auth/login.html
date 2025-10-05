@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block title %}Login - TOEFL Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .login-container {
+        min-height: 100vh;
+        background: linear-gradient(135deg, #667eea 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .login-card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        overflow: hidden;
+        max-width: 400px;
+        width: 100%;
+    }
+    
+    .login-header {
+        background: linear-gradient(135deg, #4164ff 100%);
+        color: white;
+        padding: 2rem;
+        text-align: center;
+    }
+    
+    .login-body {
+        padding: 2rem;
+    }
+    
+    .form-control {
+        border-radius: 10px;
+        border: 2px solid #e9ecef;
+        padding: 0.75rem 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+    
+    .btn-login {
+        background: linear-gradient(135deg, #296dff 100%);
+        border: none;
+        border-radius: 10px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-login:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+    
+    .form-check-input:checked {
+        background-color: #667eea;
+        border-color: #667eea;
+    }
+    
+    .toefl-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+    
+    .password-toggle {
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: #6c757d;
+        cursor: pointer;
+        z-index: 10;
+    }
+    
+    .password-toggle:hover {
+        color: #495057;
+    }
+    
+    .password-field {
+        position: relative;
+    }
+    
+    .login-footer {
+        background: #f8f9fa;
+        padding: 2rem;
+        text-align: center;
+        border-top: 1px solid #e9ecef;
+    }
+    
+    .login-footer img {
+        max-width: 120px;
+        margin-bottom: 1rem;
+        opacity: 0.8;
+    }
+    
+    .login-footer .copyright {
+        font-size: 0.875rem;
+        color: #6c757d;
+        margin-bottom: 0.5rem;
+    }
+    
+    .login-footer .credits {
+        font-size: 0.8rem;
+        color: #adb5bd;
+    }
+</style>
+{% endblock %}
+
+{% block login_content %}
+<div class="login-container">
+    <div class="login-card">
+        <div class="login-header">
+            <div class="toefl-icon">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <h2 class="mb-0">TOEFL Reports</h2>
+            <p class="mb-0 opacity-75">Sistema de Gestão de Resultados</p>
+        </div>
+        
+        <div class="login-body">
+            <form method="POST">
+                {{ form.hidden_tag() }}
+                
+                <div class="mb-3">
+                    {{ form.username.label(class="form-label fw-bold") }}
+                    {{ form.username(class="form-control" + (" is-invalid" if form.username.errors else ""), placeholder="Digite seu usuário") }}
+                    {% if form.username.errors %}
+                        <div class="invalid-feedback">
+                            {% for error in form.username.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    {{ form.password.label(class="form-label fw-bold") }}
+                    <div class="password-field">
+                        {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), placeholder="Digite sua senha", id="passwordField") }}
+                        <button type="button" class="password-toggle" onclick="togglePassword()">
+                            <i class="bi bi-eye" id="toggleIcon"></i>
+                        </button>
+                    </div>
+                    {% if form.password.errors %}
+                        <div class="invalid-feedback">
+                            {% for error in form.password.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-4">
+                    <div class="form-check">
+                        {{ form.remember_me(class="form-check-input") }}
+                        {{ form.remember_me.label(class="form-check-label") }}
+                    </div>
+                </div>
+                
+                <div class="d-grid">
+                    {{ form.submit(class="btn btn-primary btn-login text-white") }}
+                </div>
+            </form>
+            
+            <div class="text-center mt-4">
+                <small class="text-muted">
+                    <i class="bi bi-shield-check me-1"></i>
+                    Acesso seguro e protegido
+                </small>
+            </div>
+        </div>
+        
+        <div class="login-footer">
+            <img src="https://www.colegiosantoantonio.com.br/wp-content/uploads/2019/06/nova-logo-colegio-santo-antonio-logotipo.png" alt="Colégio Santo Antônio" class="img-fluid">
+            <div class="copyright">Copyright © 2025 - Todos os direitos reservados.</div>
+            <div class="credits">Feito por Júlio Amâncio</div>
+        </div>
+    </div>
+</div>
+
+<script>
+function togglePassword() {
+    const passwordField = document.getElementById('passwordField');
+    const toggleIcon = document.getElementById('toggleIcon');
+    
+    if (passwordField.type === 'password') {
+        passwordField.type = 'text';
+        toggleIcon.className = 'bi bi-eye-slash';
+    } else {
+        passwordField.type = 'password';
+        toggleIcon.className = 'bi bi-eye';
+    }
+}
+</script>
+{% endblock %}

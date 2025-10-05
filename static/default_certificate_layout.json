@@ -1,0 +1,39 @@
+{
+  "positions": {
+    "studentName": {
+      "x": 41.625,
+      "y": 39.04041519434629,
+      "font_size": 31
+    },
+    "listeningScore": {
+      "x": 52.25,
+      "y": 59.53787544169611,
+      "font_size": 16
+    },
+    "readingScore": {
+      "x": 78.25,
+      "y": 59.35843639575972,
+      "font_size": 16
+    },
+    "lfmScore": {
+      "x": 52.37500000000001,
+      "y": 64.48763250883393,
+      "font_size": 16
+    },
+    "totalScore": {
+      "x": 78.25,
+      "y": 64.65878975265018,
+      "font_size": 16
+    },
+    "testDate": {
+      "x": 37.125,
+      "y": 73.14763692579506,
+      "font_size": 16
+    }
+  },
+  "colors": {
+    "name_color": "#000000",
+    "scores_color": "#000000",
+    "date_color": "#000000"
+  }
+}

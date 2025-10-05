@@ -1,0 +1,661 @@
+{% extends "base.html" %}
+
+{% block title %}Turmas - TOEFL{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-collection me-2"></i>Gerenciar Turmas</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#createClassModal">
+                <i class="bi bi-plus-circle me-1"></i>Nova Turma
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Estatísticas das Turmas -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="mb-0">{{ classes|length }}</h4>
+                        <p class="mb-0">Total de Turmas</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-collection" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="mb-0">{{ total_students }}</h4>
+                        <p class="mb-0">Total de Alunos</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-people" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="mb-0">{{ active_classes }}</h4>
+                        <p class="mb-0">Turmas Ativas</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-check-circle" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-dark">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="mb-0">{{ avg_total_score|round(0) if avg_total_score else 0 }}</h4>
+                        <p class="mb-0">Média Geral</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-calculator" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Segunda linha de estatísticas -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-secondary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="mb-0">{{ avg_students_per_class|round(1) if avg_students_per_class else 0 }}</h4>
+                        <p class="mb-0">Média por Turma</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-graph-up" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de Turmas -->
+<div class="card shadow">
+    <div class="card-header py-3">
+        <div class="d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="bi bi-list me-2"></i>Lista de Turmas
+            </h6>
+            <div class="d-flex align-items-center">
+                <button type="button" class="btn btn-sm btn-outline-danger me-2" id="deleteSelectedBtn" style="display: none;" onclick="deleteSelectedClasses()">
+                    <i class="bi bi-trash me-1"></i>Deletar Selecionadas
+                </button>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="selectAllClasses" onchange="toggleSelectAll()">
+                    <label class="form-check-label" for="selectAllClasses">
+                        Selecionar Todas
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        {% if classes %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="40">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="selectAllHeader" onchange="toggleSelectAll()">
+                                </div>
+                            </th>
+                            <th>Nome da Turma</th>
+                            <th>Descrição</th>
+                            <th class="text-center">Alunos</th>
+                            <th class="text-center">Média Geral</th>
+                            <th class="text-center">Nível Predominante</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for class in classes %}
+                            <tr class="{% if loop.index0 % 2 == 1 %}table-light{% endif %}">
+                                <td>
+                                    <div class="form-check">
+                                        <input class="form-check-input class-checkbox" type="checkbox" value="{{ class.id }}" onchange="updateDeleteButton()">
+                                    </div>
+                                </td>
+                                <td>
+                                    <div>
+                                        <strong>{{ class.name }}</strong>
+                                        <br>
+                                        <small class="text-muted">Criada em {{ class.created_at.strftime('%d/%m/%Y') }}</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="text-muted">{{ class.description or 'Sem descrição' }}</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-primary">{{ class.students|length }}</span>
+                                </td>
+                                <td class="text-center">
+                                    {% if class.students %}
+                                        {% set total_scores = class.students|map(attribute='total')|select|list %}
+                                        {% if total_scores %}
+                                            {% set avg_score = total_scores|sum / total_scores|length %}
+                                            <strong class="text-success">{{ avg_score|round(1) }}</strong>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if class.students %}
+                                        {% set cefr_levels = [] %}
+                                        {% for student in class.students %}
+                                            {% set _ = cefr_levels.append(student.get_cefr_level()) %}
+                                        {% endfor %}
+                                        {% set level_counts = {} %}
+                                        {% for level in cefr_levels %}
+                                            {% set _ = level_counts.update({level: level_counts.get(level, 0) + 1}) %}
+                                        {% endfor %}
+                                        {% set predominant = level_counts|dictsort(by='value', reverse=true)|first|first if level_counts else 'N/A' %}
+                                        {% if predominant == 'B2' %}
+                                            <span class="badge bg-success">{{ predominant }}</span>
+                                        {% elif predominant == 'B1' %}
+                                            <span class="badge bg-primary">{{ predominant }}</span>
+                                        {% elif predominant == 'A2' %}
+                                            <span class="badge bg-warning text-dark">{{ predominant }}</span>
+                                        {% elif predominant == 'A1' %}
+                                            <span class="badge bg-info">{{ predominant }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ predominant }}</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if class.is_active %}
+                                        <span class="badge bg-success">Ativa</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Inativa</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <a href="{{ url_for('students', class_filter=class.id) }}" 
+                                           class="btn btn-outline-primary" 
+                                           data-bs-toggle="tooltip" title="Ver Alunos">
+                                            <i class="bi bi-people"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-outline-info" 
+                                                data-bs-toggle="tooltip" title="Editar Turma"
+                                                onclick="editClass({{ class.id }}, '{{ class.name }}', '{{ class.description or '' }}', {{ class.is_active|lower }})">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary" 
+                                data-bs-toggle="tooltip" title="Estatísticas"
+                                onclick="showClassStats({{ class.id }})">
+                            <i class="bi bi-graph-up"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-danger" 
+                                data-bs-toggle="tooltip" title="Deletar Turma"
+                                onclick="deleteClass({{ class.id }}, '{{ class.name }}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-collection text-muted" style="font-size: 4rem;"></i>
+                <h4 class="text-muted mt-3">Nenhuma turma encontrada</h4>
+                <p class="text-muted">Crie sua primeira turma para começar a organizar os alunos.</p>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createClassModal">
+                    <i class="bi bi-plus-circle me-1"></i>Criar Primeira Turma
+                </button>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal para Criar/Editar Turma -->
+<div class="modal fade" id="createClassModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Nova Turma</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('create_class') }}" id="classForm">
+                <div class="modal-body">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.name.label(class="form-label fw-bold") }}
+                        {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
+                        {% if form.name.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.name.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Nome único para identificar a turma</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.description.label(class="form-label fw-bold") }}
+                        {{ form.description(class="form-control", rows="3") }}
+                        <div class="form-text">Descrição opcional da turma</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            {{ form.is_active(class="form-check-input") }}
+                            {{ form.is_active.label(class="form-check-label") }}
+                        </div>
+                        <div class="form-text">Turmas ativas aparecem nos filtros de upload</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
+                        <i class="bi bi-check-circle me-1"></i>Criar Turma
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Estatísticas da Turma -->
+<div class="modal fade" id="statsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Estatísticas da Turma</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="statsContent">
+                <!-- Conteúdo será carregado via JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Resetar modal ao fechar
+    document.getElementById('createClassModal').addEventListener('hidden.bs.modal', function() {
+        resetModal();
+    });
+});
+
+// Função para resetar o modal
+function resetModal() {
+    document.getElementById('modalTitle').textContent = 'Nova Turma';
+    document.getElementById('submitBtn').innerHTML = '<i class="bi bi-check-circle me-1"></i>Criar Turma';
+    document.getElementById('classForm').action = '{{ url_for("create_class") }}';
+    document.getElementById('classForm').reset();
+    
+    // Remover classes de erro
+    const inputs = document.querySelectorAll('.is-invalid');
+    inputs.forEach(input => input.classList.remove('is-invalid'));
+    
+    // Remover mensagens de erro
+    const errorMessages = document.querySelectorAll('.invalid-feedback');
+    errorMessages.forEach(msg => msg.remove());
+}
+
+// Função para editar turma
+function editClass(id, name, description, isActive) {
+    document.getElementById('modalTitle').textContent = 'Editar Turma';
+    document.getElementById('submitBtn').innerHTML = '<i class="bi bi-check-circle me-1"></i>Salvar Alterações';
+    document.getElementById('classForm').action = `/classes/${id}/edit`;
+    
+    // Preencher campos
+    document.getElementById('name').value = name;
+    document.getElementById('description').value = description;
+    document.getElementById('is_active').checked = isActive;
+    
+    // Mostrar modal
+    const modal = new bootstrap.Modal(document.getElementById('createClassModal'));
+    modal.show();
+}
+
+// Função para mostrar estatísticas da turma
+function showClassStats(classId) {
+    const modal = new bootstrap.Modal(document.getElementById('statsModal'));
+    const content = document.getElementById('statsContent');
+    
+    // Mostrar loading
+    content.innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Carregando...</span>
+            </div>
+            <p class="mt-2 text-muted">Carregando estatísticas...</p>
+        </div>
+    `;
+    
+    modal.show();
+    
+    // Simular carregamento de dados (substituir por requisição AJAX real)
+    setTimeout(() => {
+        content.innerHTML = `
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white text-center">
+                        <div class="card-body">
+                            <h3>25</h3>
+                            <p class="mb-0">Alunos</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white text-center">
+                        <div class="card-body">
+                            <h3>742</h3>
+                            <p class="mb-0">Média Geral</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white text-center">
+                        <div class="card-body">
+                            <h3>B1</h3>
+                            <p class="mb-0">Nível Predominante</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-dark text-center">
+                        <div class="card-body">
+                            <h3>68%</h3>
+                            <p class="mb-0">Taxa de Aprovação</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <h6 class="text-primary mb-3">Distribuição por Nível CEFR</h6>
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between">
+                            <span>B2 <span class="badge bg-success">8 alunos</span></span>
+                            <span>32%</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-success" style="width: 32%"></div>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between">
+                            <span>B1 <span class="badge bg-primary">10 alunos</span></span>
+                            <span>40%</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-primary" style="width: 40%"></div>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between">
+                            <span>A2 <span class="badge bg-warning text-dark">5 alunos</span></span>
+                            <span>20%</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-warning" style="width: 20%"></div>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between">
+                            <span>A1 <span class="badge bg-info">2 alunos</span></span>
+                            <span>8%</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-info" style="width: 8%"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <h6 class="text-primary mb-3">Médias por Habilidade</h6>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Listening</span>
+                            <span><strong>248</strong></span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-primary" style="width: 82.7%"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Reading</span>
+                            <span><strong>252</strong></span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-success" style="width: 84%"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Language Form & Meaning</span>
+                            <span><strong>242</strong></span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-warning" style="width: 80.7%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }, 1500);
+}
+
+// Função para deletar turma
+function deleteClass(classId, className) {
+    if (confirm(`Tem certeza que deseja deletar a turma "${className}"? Esta ação não pode ser desfeita.`)) {
+        // Criar formulário para enviar requisição POST
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/turmas/deletar/${classId}`;
+        
+        // Adicionar token CSRF se necessário
+        const csrfToken = document.querySelector('meta[name="csrf-token"]');
+        if (csrfToken) {
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrf_token';
+            csrfInput.value = csrfToken.getAttribute('content');
+            form.appendChild(csrfInput);
+        }
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Função para alternar seleção de todas as turmas
+function toggleSelectAll() {
+    const selectAllHeader = document.getElementById('selectAllHeader');
+    const selectAllClasses = document.getElementById('selectAllClasses');
+    const checkboxes = document.querySelectorAll('.class-checkbox');
+    
+    // Sincronizar os dois checkboxes "Selecionar Todas"
+    if (event.target.id === 'selectAllHeader') {
+        selectAllClasses.checked = selectAllHeader.checked;
+    } else if (event.target.id === 'selectAllClasses') {
+        selectAllHeader.checked = selectAllClasses.checked;
+    }
+    
+    // Marcar/desmarcar todos os checkboxes das turmas
+    const isChecked = selectAllHeader.checked;
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = isChecked;
+    });
+    
+    updateDeleteButton();
+}
+
+// Função para atualizar a visibilidade do botão de deletar
+function updateDeleteButton() {
+    const checkboxes = document.querySelectorAll('.class-checkbox:checked');
+    const deleteBtn = document.getElementById('deleteSelectedBtn');
+    const selectAllHeader = document.getElementById('selectAllHeader');
+    const selectAllClasses = document.getElementById('selectAllClasses');
+    const totalCheckboxes = document.querySelectorAll('.class-checkbox');
+    
+    // Mostrar/esconder botão de deletar
+    if (checkboxes.length > 0) {
+        deleteBtn.style.display = 'inline-block';
+    } else {
+        deleteBtn.style.display = 'none';
+    }
+    
+    // Atualizar estado do "Selecionar Todas"
+    if (checkboxes.length === totalCheckboxes.length && totalCheckboxes.length > 0) {
+        selectAllHeader.checked = true;
+        selectAllClasses.checked = true;
+        selectAllHeader.indeterminate = false;
+        selectAllClasses.indeterminate = false;
+    } else if (checkboxes.length > 0) {
+        selectAllHeader.checked = false;
+        selectAllClasses.checked = false;
+        selectAllHeader.indeterminate = true;
+        selectAllClasses.indeterminate = true;
+    } else {
+        selectAllHeader.checked = false;
+        selectAllClasses.checked = false;
+        selectAllHeader.indeterminate = false;
+        selectAllClasses.indeterminate = false;
+    }
+}
+
+// Função para deletar turmas selecionadas
+function deleteSelectedClasses() {
+    const checkboxes = document.querySelectorAll('.class-checkbox:checked');
+    const classIds = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (classIds.length === 0) {
+        alert('Nenhuma turma selecionada.');
+        return;
+    }
+    
+    const confirmMessage = classIds.length === 1 
+        ? 'Tem certeza que deseja deletar a turma selecionada?' 
+        : `Tem certeza que deseja deletar as ${classIds.length} turmas selecionadas?`;
+    
+    if (confirm(confirmMessage + ' Esta ação não pode ser desfeita.')) {
+        // Criar formulário para enviar requisição POST
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/turmas/deletar-multiplas';
+        
+        // Adicionar token CSRF se necessário
+        const csrfToken = document.querySelector('meta[name="csrf-token"]');
+        if (csrfToken) {
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrf_token';
+            csrfInput.value = csrfToken.getAttribute('content');
+            form.appendChild(csrfInput);
+        }
+        
+        // Adicionar IDs das turmas
+        classIds.forEach(id => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'class_ids';
+            input.value = id;
+            form.appendChild(input);
+        });
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+
+<style>
+.avatar-sm {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge {
+    font-size: 0.75rem;
+}
+
+.btn-group-sm > .btn {
+    padding: 0.25rem 0.5rem;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(33, 40, 50, 0.15);
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+.progress {
+    border-radius: 10px;
+}
+
+.progress-bar {
+    border-radius: 10px;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}Importação Admin - Planilha Multi-abas{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Importação Admin</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{{ url_for('admin') }}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Voltar ao Admin
+            </a>
+            <a href="{{ url_for('students') }}" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-people me-1"></i>Ver Alunos
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-cloud-upload me-2"></i>Importar Planilha TOEFL (Multi-abas)
+                </h6>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Selecione um arquivo Excel (.xlsx/.xls) ou CSV. As turmas serão criadas automaticamente por nome de aba. Se alguma aba não tiver sugestão, você poderá definir o nome da turma antes de confirmar.</p>
+
+                <div class="mb-3">
+                    <label for="fileInput" class="form-label fw-bold">Arquivo</label>
+                    <input type="file" class="form-control" id="fileInput" accept=".xlsx,.xls,.csv">
+                    <small class="text-muted">Tamanho máximo: 16MB</small>
+                </div>
+
+                <div class="d-flex gap-2 mb-3">
+                    <button id="previewBtn" class="btn btn-outline-primary" disabled>
+                        <i class="bi bi-eye me-1"></i>Pré-visualizar
+                    </button>
+                    <button id="confirmBtn" class="btn btn-primary" disabled>
+                        <i class="bi bi-check2-circle me-1"></i>Confirmar Importação
+                    </button>
+                </div>
+
+                <div id="previewCard" class="card border-secondary" style="display: none;">
+                    <div class="card-header bg-light">
+                        <strong>Prévia e Seleção de Abas</strong>
+                    </div>
+                    <div class="card-body" id="previewContent">
+                        <div class="text-muted">Nenhuma prévia gerada ainda.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-secondary">
+                    <i class="bi bi-info-circle me-2"></i>Dicas
+                </h6>
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>Sem dependência de turma pré-existente</li>
+                    <li>Criação automática de turmas por aba</li>
+                    <li>Defina nomes de turmas quando necessário</li>
+                    <li>Importação por abas com transações independentes</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// CSRF: obter do meta do template base para garantir disponibilidade
+const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('fileInput');
+    const previewBtn = document.getElementById('previewBtn');
+    const confirmBtn = document.getElementById('confirmBtn');
+    const previewCard = document.getElementById('previewCard');
+    const previewContent = document.getElementById('previewContent');
+
+    let currentSheets = [];
+
+    fileInput.addEventListener('change', function() {
+        const hasFile = this.files.length > 0;
+        previewBtn.disabled = !hasFile;
+        confirmBtn.disabled = true;
+        if (!hasFile) {
+            previewCard.style.display = 'none';
+        }
+    });
+
+    previewBtn.addEventListener('click', function() {
+        const file = fileInput.files[0];
+        if (!file) {
+            alert('Selecione um arquivo primeiro.');
+            return;
+        }
+
+        const validTypes = ['.xlsx', '.xls', '.csv'];
+        const fileExt = '.' + file.name.split('.').pop().toLowerCase();
+        if (!validTypes.includes(fileExt)) {
+            alert('Tipo de arquivo não suportado. Use .xlsx, .xls ou .csv');
+            return;
+        }
+        if (file.size > 16 * 1024 * 1024) {
+            alert('Arquivo muito grande. Máximo 16MB.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('csrf_token', csrfToken);
+
+        previewContent.innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+                <p class="mt-2 text-muted">Gerando prévia e detectando abas...</p>
+            </div>
+        `;
+        previewCard.style.display = 'block';
+
+        fetch('{{ url_for("upload_preview") }}', {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-CSRFToken': csrfToken },
+            credentials: 'same-origin'
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success && data.error) {
+                previewContent.innerHTML = `<div class='alert alert-danger'>${data.error}</div>`;
+                confirmBtn.disabled = true;
+                return;
+            }
+            const sheets = (data.sheets || []).map(s => ({
+                sheet: s.sheet_name || s.sheet || s.name,
+                suggested_class: s.suggested_class_name || s.suggested_class || (s.sheet_name || s.sheet || s.name),
+                valid_rows: s.valid_rows || 0
+            }));
+            currentSheets = sheets;
+
+            if (sheets.length === 0) {
+                previewContent.innerHTML = `<div class='alert alert-warning'>Nenhuma aba detectada. O arquivo será importado como simples.</div>`;
+                confirmBtn.disabled = false;
+                return;
+            }
+
+            const listHtml = sheets.map(s => `
+                <div class='row align-items-center mb-2'>
+                    <div class='col-md-4'>
+                        <div class='form-check'>
+                            <input class='form-check-input sheet-check' type='checkbox' value='${s.sheet}' id='check_${s.sheet}' checked>
+                            <label class='form-check-label' for='check_${s.sheet}'>${s.sheet}</label>
+                        </div>
+                    </div>
+                    <div class='col-md-5'>
+                        <input type='text' class='form-control class-name-input' id='class_${s.sheet}' placeholder='Nome da turma' value='${s.suggested_class || ''}'>
+                    </div>
+                    <div class='col-md-3 text-muted small'>Linhas válidas: ${s.valid_rows}</div>
+                </div>
+            `).join('');
+
+            previewContent.innerHTML = `
+                <p class='text-muted'>Selecione as abas e ajuste os nomes das turmas (serão criadas automaticamente).</p>
+                ${listHtml}
+            `;
+            confirmBtn.disabled = false;
+        })
+        .catch(err => {
+            previewContent.innerHTML = `<div class='alert alert-danger'>Erro ao gerar prévia: ${err}</div>`;
+            confirmBtn.disabled = true;
+        });
+    });
+
+    confirmBtn.addEventListener('click', function() {
+        const file = fileInput.files[0];
+        if (!file) {
+            alert('Selecione um arquivo primeiro.');
+            return;
+        }
+
+        const selectedSheets = Array.from(document.querySelectorAll('.sheet-check'))
+            .filter(ch => ch.checked)
+            .map(ch => ch.value);
+
+        const classNames = {};
+        selectedSheets.forEach(sheet => {
+            const inp = document.getElementById('class_' + sheet);
+            classNames[sheet] = inp ? inp.value.trim() : sheet;
+        });
+
+        if (selectedSheets.length === 0) {
+            alert('Selecione ao menos uma aba para importar.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('selected_sheets', JSON.stringify(selectedSheets));
+        formData.append('class_names', JSON.stringify(classNames));
+        formData.append('csrf_token', csrfToken);
+
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Importando...';
+
+        fetch('{{ url_for("upload_confirm") }}', {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-CSRFToken': csrfToken },
+            credentials: 'same-origin'
+        })
+        .then(r => r.json())
+        .then(res => {
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i>Confirmar Importação';
+            if (res.success) {
+                const details = res.details || {};
+                const okSheets = Object.keys(details).filter(k => details[k] && details[k].success);
+                const failedSheets = Object.keys(details).filter(k => details[k] && details[k].error);
+                let html = `<div class='alert alert-success'>Importação concluída com sucesso.</div>`;
+                if (okSheets.length) {
+                    html += `<div class='mb-2'><strong>Sucesso:</strong> ${okSheets.join(', ')}</div>`;
+                }
+                if (failedSheets.length) {
+                    html += `<div class='mb-2 text-danger'><strong>Falhas:</strong> ${failedSheets.map(s => s + ' (' + (details[s].error || 'erro') + ')').join(', ')}</div>`;
+                }
+                previewContent.innerHTML = html;
+            } else {
+                previewContent.innerHTML = `<div class='alert alert-danger'>${res.error || 'Erro ao importar'}</div>`;
+            }
+        })
+        .catch(err => {
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i>Confirmar Importação';
+            previewContent.innerHTML = `<div class='alert alert-danger'>Erro na importação: ${err}</div>`;
+        });
+    });
+});
+</script>
+{% endblock %}
