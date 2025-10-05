@@ -83,6 +83,8 @@ class Student(db.Model):
     
     # Campo para Listening CSA
     listening_csa_points = db.Column(db.Float, nullable=True)
+    # Flag para indicar se o valor é manual e não deve ser sobrescrito
+    listening_csa_is_manual = db.Column(db.Boolean, default=False)
     
     # Campo individual para rótulo escolar (turma meta) - cada aluno tem seu próprio
     turma_meta = db.Column(db.String(10), nullable=True)  # "6.1", "6.2", "6.3", "9.1", "9.2", "9.3"
@@ -175,6 +177,9 @@ class Student(db.Model):
         # Atualizar listening_csa_points baseado em score_total e grupo (turma/nivel)
         from listening_csa import compute_listening_csa
         try:
+            # Se estiver marcado como manual, não sobrescrever
+            if getattr(self, 'listening_csa_is_manual', False):
+                return
             rotulo_escolar = None
             turma_name = None
             if self.class_info:
@@ -195,6 +200,21 @@ class Student(db.Model):
     def compute_listening_csa(self):
         """Calcula o Listening CSA baseado em turma_meta/class_info e score_total"""
         try:
+            # Se há valor manual, retornar dados combinando com níveis esperados/obtidos
+            if getattr(self, 'listening_csa_is_manual', False) and self.listening_csa_points is not None:
+                rotulo_escolar = None
+                turma_name = None
+                if self.class_info:
+                    turma_name = self.class_info.name
+                    if self.class_info.meta_label:
+                        rotulo_escolar = str(self.class_info.meta_label).strip().replace(',', '.')
+                elif self.turma_meta:
+                    rotulo_escolar = str(self.turma_meta).strip().replace(',', '.')
+                if self.total is not None:
+                    from listening_csa import compute_listening_csa
+                    base = compute_listening_csa(rotulo_escolar, self.total, turma_name=turma_name) or {}
+                    base['points'] = float(self.listening_csa_points)
+                    return base
             rotulo_escolar = None
             turma_name = None
             if self.class_info:

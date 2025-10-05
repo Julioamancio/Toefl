@@ -212,6 +212,22 @@
                 </div>
             </div>
         </div>
+
+        <!-- Recalcular Listening CSA para todos os alunos -->
+        <div class="row mt-3">
+            <div class="col-md-12">
+                <div class="alert alert-info" role="alert">
+                    <h6 class="alert-heading"><i class="bi bi-soundwave me-2"></i>Recalcular Listening CSA</h6>
+                    <p class="mb-2">Recalcula os pontos de <strong>Listening CSA (0–5)</strong> para todos os alunos com <code>total</code> definido, independentemente de terem professor associado. Usa <code>turma_meta</code> ou o <strong>meta_label</strong> da turma para determinar o grupo (6º, 9.1, 9.2/9.3).</p>
+                    <hr>
+                    <form method="post" action="{{ url_for('recalculate_listening_csa_admin') }}">
+                        <button type="submit" class="btn btn-outline-info btn-sm">
+                            <i class="bi bi-calculator me-1"></i>Recalcular Listening CSA (todos)
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
         
         <!-- Nova seção para Correção de Níveis CEFR -->
         <div class="row mt-3">

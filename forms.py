@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileRequired, FileAllowed
-from wtforms import StringField, PasswordField, BooleanField, SubmitField, TextAreaField, SelectField
+from wtforms import StringField, PasswordField, BooleanField, SubmitField, TextAreaField, SelectField, FloatField
 from wtforms.validators import DataRequired, Length, Email, ValidationError
 from models import User, Class, Teacher
 
@@ -146,17 +146,20 @@ class EditStudentTurmaMetaForm(FlaskForm):
         """Determina o ano da turma (6 ou 9) baseado no nome da turma do aluno"""
         if not student or not student.class_info or not student.class_info.name:
             return None
-            
         class_name = student.class_info.name.lower()
-        
         # Verifica se é 6º ano - padrões: "6° ano", "6º ano", "6 ano"
-        if ('6°' in class_name or '6º' in class_name or 
-            '6 ano' in class_name):
+        if ('6°' in class_name or '6º' in class_name or '6 ano' in class_name):
             return 6
-        
         # Verifica se é 9º ano - padrões: "9° ano", "9º ano", "9 ano"
-        if ('9°' in class_name or '9º' in class_name or 
-            '9 ano' in class_name):
+        if ('9°' in class_name or '9º' in class_name or '9 ano' in class_name):
             return 9
-            
         return None
+
+class EditListeningCSAForm(FlaskForm):
+    csa_points = FloatField(
+        'Pontos Listening CSA',
+        validators=[DataRequired()],
+        filters=[lambda x: x.replace(',', '.') if isinstance(x, str) else x]
+    )
+    is_manual = BooleanField('Manter valor manual (não recalcular automaticamente)')
+    submit = SubmitField('Salvar Listening CSA')

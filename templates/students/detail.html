@@ -38,6 +38,9 @@
             <a href="{{ url_for('edit_student_turma_meta', id=student.id) }}" class="btn btn-sm btn-outline-info">
                 <i class="bi bi-tags me-1"></i>Alterar Rótulo Escolar
             </a>
+            <a href="{{ url_for('edit_student_listening_csa', id=student.id) }}" class="btn btn-sm btn-outline-success">
+                <i class="bi bi-sliders me-1"></i>Editar Listening CSA
+            </a>
             <a href="{{ url_for('student_report', student_id=student.id) }}" class="btn btn-sm btn-success" target="_blank">
                 <i class="bi bi-file-earmark-text me-1"></i>Gerar Relatório
             </a>
@@ -99,7 +102,11 @@
                                 N/A
                             {% endif %}
                         </h3>
-                        <p class="mb-0">Listening CSA</p>
+                        <p class="mb-0">Listening CSA
+                            {% if student.listening_csa_is_manual %}
+                                <span class="badge bg-warning text-dark ms-2">Manual</span>
+                            {% endif %}
+                        </p>
                     </div>
                     <div class="align-self-center">
                         <i class="bi bi-calculator" style="font-size: 2rem;"></i>

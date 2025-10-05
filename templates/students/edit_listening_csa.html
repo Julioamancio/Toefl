@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Listening CSA - {{ student.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
+  <h1 class="h4 mb-0">Editar Listening CSA</h1>
+  <div>
+    <a href="{{ url_for('student_detail', id=student.id) }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>Voltar
+    </a>
+  </div>
+  </div>
+
+<div class="row">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-body">
+        <form method="post">
+          {{ form.csrf_token }}
+
+          <div class="mb-3">
+            <label class="form-label">Aluno</label>
+            <input type="text" class="form-control" value="{{ student.name }}" disabled>
+          </div>
+
+          <div class="mb-3">
+            <label for="csa_points" class="form-label">Pontos Listening CSA</label>
+            {{ form.csa_points(class="form-control", id="csa_points", step="0.1") }}
+            <div class="form-text">Digite um valor entre -5 e +5. Use decimais (ex: 1.5).</div>
+          </div>
+
+          <div class="form-check mb-3">
+            {{ form.is_manual(class="form-check-input", id="is_manual") }}
+            <label class="form-check-label" for="is_manual">{{ form.is_manual.label.text }}</label>
+          </div>
+
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save me-1"></i>{{ form.submit.label.text }}
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="alert alert-info">
+      <h6 class="alert-heading"><i class="bi bi-info-circle me-2"></i>Como funciona</h6>
+      <p class="mb-1">Marque a opção para manter o valor manual. Enquanto estiver marcada, recálculos automáticos não irão sobrescrever os pontos.</p>
+      <p class="mb-0">Se desmarcar, o sistema voltará a calcular automaticamente com base em <code>turma_meta</code>/<code>meta_label</code> e <code>score total</code>.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -142,6 +142,20 @@ def create_app(config_name=None):
                         except Exception as e:
                             db.session.rollback()
                             print(f"⚠️ Falha ao adicionar coluna found_name: {e}")
+                    # Garantir coluna de override manual do Listening CSA
+                    if 'listening_csa_is_manual' not in col_names:
+                        dialect = db.engine.dialect.name
+                        try:
+                            if dialect == 'sqlite':
+                                # SQLite não tem tipo booleano nativo; usar INTEGER 0/1
+                                db.session.execute(text('ALTER TABLE students ADD COLUMN listening_csa_is_manual INTEGER DEFAULT 0'))
+                            else:
+                                db.session.execute(text('ALTER TABLE students ADD COLUMN listening_csa_is_manual BOOLEAN DEFAULT FALSE'))
+                            db.session.commit()
+                            print('✅ Coluna listening_csa_is_manual adicionada à tabela students')
+                        except Exception as e:
+                            db.session.rollback()
+                            print(f"⚠️ Falha ao adicionar coluna listening_csa_is_manual: {e}")
             except Exception as mig_err:
                 print(f"⚠️ Falha ao migrar coluna import_sheet_name: {mig_err}")
 
@@ -480,18 +494,26 @@ def create_app(config_name=None):
                             tokens.append(cleaned.lower())
                     if not tokens:
                         continue
+                    # Build grouped conditions with explicit parentheses to avoid SQL precedence issues
                     token_conditions = [db.func.lower(Student.name).like(f'%{token}%') for token in tokens]
-                    term_conditions = []
                     if token_conditions:
-                        term_conditions.append(db.and_(*token_conditions))
+                        # (name LIKE token1 AND name LIKE token2 ...)
+                        and_group = db.and_(*token_conditions)
                         forward_pattern = ' '.join(tokens)
-                        term_conditions.append(db.func.lower(Student.name).like(f'%{forward_pattern}%'))
+                        forward_like = db.func.lower(Student.name).like(f'%{forward_pattern}%')
+                        term_or_group = db.or_(and_group, forward_like)
                         if len(tokens) > 1:
                             reverse_pattern = ' '.join(reversed(tokens))
                             if reverse_pattern != forward_pattern:
-                                term_conditions.append(db.func.lower(Student.name).like(f'%{reverse_pattern}%'))
-                    if term_conditions:
-                        conditions.append(db.or_(*term_conditions))
+                                reverse_like = db.func.lower(Student.name).like(f'%{reverse_pattern}%')
+                                term_or_group = db.or_(term_or_group, reverse_like)
+                        # Force parentheses around the entire term group
+                        try:
+                            term_or_group = term_or_group.self_group()
+                        except Exception:
+                            # Fallback without self_group if not available
+                            pass
+                        conditions.append(term_or_group)
                 if conditions:
                     base_query = base_query.filter(db.or_(*conditions))
                 return base_query
@@ -800,6 +822,29 @@ def create_app(config_name=None):
             form.turma_meta.data = student.turma_meta
             return render_template('students/edit_turma_meta.html', form=form, student=student)
 
+        @app.route('/student/<int:id>/edit-listening-csa', methods=['GET', 'POST'])
+        @login_required
+        def edit_student_listening_csa(id):
+            from forms import EditListeningCSAForm
+            student = Student.query.get_or_404(id)
+            form = EditListeningCSAForm()
+
+            if form.validate_on_submit():
+                try:
+                    student.listening_csa_points = form.csa_points.data
+                    student.listening_csa_is_manual = bool(form.is_manual.data)
+                    db.session.commit()
+                    flash('Listening CSA atualizado com sucesso!', 'success')
+                    return redirect(url_for('student_detail', id=student.id))
+                except Exception as e:
+                    db.session.rollback()
+                    flash(f'Erro ao atualizar Listening CSA: {str(e)}', 'error')
+
+            # Pré-popular valores
+            form.csa_points.data = student.listening_csa_points if student.listening_csa_points is not None else 0.0
+            form.is_manual.data = bool(getattr(student, 'listening_csa_is_manual', False))
+            return render_template('students/edit_listening_csa.html', form=form, student=student)
+
         @app.route('/student/<int:student_id>/report')
         @login_required
         def student_report(student_id):
@@ -945,7 +990,8 @@ def create_app(config_name=None):
                         'import_sheet_name': 'VARCHAR(120)',
                         'turma_meta': 'VARCHAR(10)',
                         'listening_csa_points': 'FLOAT',
-                        'found_name': 'VARCHAR(120)'
+                        'found_name': 'VARCHAR(120)',
+                        'listening_csa_is_manual': 'BOOLEAN'
                     }
                     for col_name, col_type in required_student_cols.items():
                         if col_name not in student_cols:
@@ -986,6 +1032,41 @@ def create_app(config_name=None):
                 flash('Schema verificado/atualizado com sucesso para importação.', 'success')
             except Exception as e:
                 flash(f'Erro ao verificar/atualizar schema: {str(e)}', 'error')
+            return redirect(url_for('admin'))
+
+        @app.route('/admin/recalculate-listening-csa', methods=['POST'])
+        @login_required
+        def recalculate_listening_csa_admin():
+            """Recalcula Listening CSA para todos os alunos com total definido.
+            Não filtra por professor; usa turma_meta ou meta_label da turma.
+            """
+            try:
+                from flask_login import current_user
+                if not getattr(current_user, 'is_admin', False):
+                    flash('Acesso restrito aos administradores.', 'error')
+                    return redirect(url_for('admin'))
+
+                from models import Student
+                updated = 0
+                skipped = 0
+                errors = 0
+
+                # Buscar todos alunos com total definido
+                students = Student.query.filter(Student.total.isnot(None)).all()
+                for s in students:
+                    try:
+                        # Atualiza pontos CSA usando turma_meta ou class_info.meta_label
+                        s.update_toefl_calculations()
+                        updated += 1 if s.listening_csa_points is not None else 0
+                        skipped += 1 if s.listening_csa_points is None else 0
+                    except Exception:
+                        errors += 1
+
+                db.session.commit()
+                flash(f'Recalculado Listening CSA: atualizados {updated}, sem pontos {skipped}, erros {errors}.', 'success')
+            except Exception as e:
+                db.session.rollback()
+                flash(f'Erro ao recalcular Listening CSA: {str(e)}', 'error')
             return redirect(url_for('admin'))
 
         @app.route('/admin/create-user', methods=['POST'])
@@ -1551,16 +1632,33 @@ def create_app(config_name=None):
         @login_required
         def save_certificate_positions():
             try:
-                data = request.get_json()
-                logger = current_app.config.get('CERTIFICATE_LOGGER')
-                if logger:
-                    logger.info('save positions', extra={'student_id': student_id, 'positions': positions, 'colors': colors, 'certificate_date': certificate_date})
+                data = request.get_json(silent=True) or {}
                 print(f"🔍 Dados recebidos: {data}")
-                
+
+                # Extrair campos do payload
                 student_id = data.get('student_id')
                 positions = data.get('positions')
                 colors = data.get('colors', {})
                 certificate_date = data.get('certificate_date')  # Nova data personalizada
+
+                # Normalizar quando vierem como strings JSON
+                import json
+                if isinstance(positions, str):
+                    try:
+                        positions = json.loads(positions)
+                    except Exception:
+                        pass
+                if isinstance(colors, str):
+                    try:
+                        colors = json.loads(colors)
+                    except Exception:
+                        pass
+
+                # Log seguro após inicializar variáveis
+                logger = current_app.config.get('CERTIFICATE_LOGGER')
+                if logger:
+                    safe_positions_keys = list(positions.keys()) if isinstance(positions, dict) else 'not-dict'
+                    logger.info('save positions', extra={'student_id': student_id, 'positions_keys': safe_positions_keys, 'colors': colors, 'certificate_date': certificate_date})
                 
                 print(f"🔍 student_id: {student_id}, positions: {positions}, colors: {colors}, certificate_date: {certificate_date}")
                 
@@ -1576,12 +1674,12 @@ def create_app(config_name=None):
                 
                 # Verificar se já existe um layout para este estudante
                 student_layout = StudentCertificateLayout.query.filter_by(student_id=student_id).first()
-                
+
                 import json
                 if student_layout:
                     # Atualizar layout existente
-                    student_layout.positions = json.dumps(positions)
-                    student_layout.colors = json.dumps(colors)
+                    student_layout.positions = json.dumps(positions if not isinstance(positions, str) else json.loads(positions))
+                    student_layout.colors = json.dumps(colors if not isinstance(colors, str) else json.loads(colors))
                     if certificate_date:
                         student_layout.certificate_date = certificate_date
                     student_layout.updated_at = datetime.utcnow()
@@ -1589,8 +1687,8 @@ def create_app(config_name=None):
                     # Criar novo layout
                     student_layout = StudentCertificateLayout(
                         student_id=student_id,
-                        positions=json.dumps(positions),
-                        colors=json.dumps(colors),
+                        positions=json.dumps(positions if not isinstance(positions, str) else json.loads(positions)),
+                        colors=json.dumps(colors if not isinstance(colors, str) else json.loads(colors)),
                         certificate_date=certificate_date
                     )
                     db.session.add(student_layout)
@@ -1608,12 +1706,22 @@ def create_app(config_name=None):
         @login_required
         def save_certificate_colors():
             try:
-                data = request.get_json()
+                data = request.get_json(silent=True) or {}
+                student_id = data.get('student_id')
+                colors = data.get('colors')
+
+                # Normalizar se vierem como string JSON
+                import json
+                if isinstance(colors, str):
+                    try:
+                        colors = json.loads(colors)
+                    except Exception:
+                        pass
+
+                # Log seguro após inicializar variáveis
                 logger = current_app.config.get('CERTIFICATE_LOGGER')
                 if logger:
                     logger.info('save colors', extra={'student_id': student_id, 'colors': colors})
-                student_id = data.get('student_id')
-                colors = data.get('colors')
                 
                 if not student_id or not colors:
                     return jsonify({'error': 'Dados insuficientes'}), 400
