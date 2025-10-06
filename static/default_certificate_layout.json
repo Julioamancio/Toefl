@@ -1,9 +1,9 @@
 {
   "positions": {
     "studentName": {
-      "x": 41.625,
-      "y": 39.04041519434629,
-      "font_size": 31
+      "x": 46.25,
+      "y": 43.623012367491164,
+      "font_size": 20
     },
     "listeningScore": {
       "x": 52.25,

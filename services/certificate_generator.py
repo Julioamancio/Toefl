@@ -7,6 +7,7 @@ import os
 import io
 import json
 import logging
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -346,7 +347,11 @@ class CertificateGenerator:
         font_candidates = []
 
         static_font_dir = BASE_DIR / 'static' / 'fonts'
+        # Priorizar fontes locais incluídas no projeto para evitar fallback minúsculo
         if weight == 'bold':
+            font_candidates.extend([
+                static_font_dir / 'DejaVuSans-Bold.ttf'
+            ])
             font_candidates.extend([
                 static_font_dir / 'OpenSans-Bold.ttf',
                 static_font_dir / 'Montserrat-Bold.ttf',
@@ -356,6 +361,9 @@ class CertificateGenerator:
                 Path('Arial Bold.ttf')
             ])
         else:
+            font_candidates.extend([
+                static_font_dir / 'DejaVuSans.ttf'
+            ])
             font_candidates.extend([
                 static_font_dir / 'OpenSans-Regular.ttf',
                 static_font_dir / 'Montserrat-Regular.ttf',
@@ -552,8 +560,25 @@ def create_certificate_for_student(student, custom_colors=None, custom_positions
     # Usar data personalizada se fornecida, senão usar data atual
     test_date = custom_date if custom_date else datetime.now().strftime("%d/%m/%Y")
     
+    # Usar o nome encontrado (found_name) quando disponível; caso contrário, cair para name
+    # Determinar nome a exibir: usar found_name quando existir, senão cair para name
+    try:
+        display_name_raw = (student.found_name or student.name or '').strip()
+    except Exception:
+        display_name_raw = (getattr(student, 'name', '') or '').strip()
+
+    # Reduzir para Primeiro + Último nome
+    if display_name_raw:
+        parts = [p for p in re.split(r"\s+", display_name_raw) if p]
+        if len(parts) >= 2:
+            display_name = f"{parts[0]} {parts[-1]}"
+        else:
+            display_name = parts[0]
+    else:
+        display_name = ''
+
     student_data = {
-        'name': student.name,
+        'name': display_name,
         'listening': student.listening,
         'reading': student.reading,
         'lfm': student.lfm,

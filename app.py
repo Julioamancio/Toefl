@@ -18,6 +18,7 @@ from config import config
 from sqlalchemy import inspect, text
 from PIL import Image, ImageDraw, ImageFont
 from functools import lru_cache
+import zipfile
 
 def create_app(config_name=None):
     """Factory function para criar a aplicação Flask"""
@@ -1411,6 +1412,89 @@ def create_app(config_name=None):
                 
             except Exception as e:
                 return jsonify({'error': f'Erro ao gerar certificado: {str(e)}'}), 500
+
+        @app.route('/api/certificate/download-zip', methods=['POST'])
+        @login_required
+        def download_certificates_zip():
+            try:
+                from services.certificate_generator import create_certificate_for_student
+                from models import Student, Class, Teacher
+
+                data = request.get_json() or {}
+                class_id = data.get('class_id')
+                teacher_id = data.get('teacher_id')  # opcional; 0 significa "Sem professor"
+                certificate_date = data.get('certificate_date') or '2025-08-02'
+
+                # Validar turma
+                if not class_id or not isinstance(class_id, int):
+                    return jsonify({'error': 'class_id inválido ou não fornecido'}), 400
+
+                turma = Class.query.get(class_id)
+                if not turma:
+                    return jsonify({'error': 'Turma não encontrada'}), 404
+
+                # Construir query com filtros
+                query = Student.query.filter_by(class_id=class_id)
+                teacher_label = None
+                if teacher_id is not None:
+                    if isinstance(teacher_id, int):
+                        if teacher_id == 0:
+                            query = query.filter(Student.teacher_id.is_(None))
+                            teacher_label = 'sem_professor'
+                        else:
+                            teacher = Teacher.query.get(teacher_id)
+                            if not teacher:
+                                return jsonify({'error': 'Professor não encontrado'}), 404
+                            query = query.filter(Student.teacher_id == teacher_id)
+                            teacher_label = ''.join(c for c in teacher.name if c.isalnum() or c in (' ', '_', '-'))
+                    else:
+                        return jsonify({'error': 'teacher_id deve ser inteiro'}), 400
+
+                students = query.all()
+                if not students:
+                    return jsonify({'error': 'Nenhum aluno encontrado para os filtros selecionados'}), 404
+
+                # Gerar ZIP em memória
+                zip_buffer = io.BytesIO()
+                with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                    for student in students:
+                        img_buffer = create_certificate_for_student(
+                            student,
+                            custom_colors=None,
+                            custom_positions=None,
+                            custom_date=certificate_date
+                        )
+                        safe_name = ''.join(c for c in student.name if c.isalnum() or c in (' ', '_', '-'))
+                        filename = f"Certificado_{safe_name.replace(' ', '_')}.png"
+                        zipf.writestr(filename, img_buffer.getvalue())
+
+                zip_buffer.seek(0)
+                # Construir nome: Turma - Professor (preservando espaços e caracteres como '°')
+                raw_class_name = turma.name or 'Turma'
+                if teacher_id is None:
+                    raw_teacher_name = 'Todos Professores'
+                elif teacher_id == 0:
+                    raw_teacher_name = 'Sem Professor'
+                else:
+                    raw_teacher_name = teacher.name if 'teacher' in locals() and teacher else (teacher_label or f'Professor_{teacher_id}')
+
+                def to_safe_keep_spaces(s: str) -> str:
+                    return ''.join(c for c in s if c.isalnum() or c in (' ', '_', '-', '.', '°')).strip()
+
+                class_part = to_safe_keep_spaces(raw_class_name)
+                teacher_part = to_safe_keep_spaces(raw_teacher_name)
+
+                # Nome final do ZIP
+                download_name = f"{class_part} - {teacher_part}.zip"
+
+                return send_file(
+                    zip_buffer,
+                    as_attachment=True,
+                    download_name=download_name,
+                    mimetype='application/zip'
+                )
+            except Exception as e:
+                return jsonify({'error': f'Erro ao gerar ZIP: {str(e)}'}), 500
 
         @app.route('/api/certificate/preview', methods=['POST'])
         @login_required

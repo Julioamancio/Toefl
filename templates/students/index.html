@@ -139,6 +139,15 @@ Pedro; Ana">{{ request.args.get('search', '') }}</textarea>
                     </button>
                 </div>
             </div>
+            <div class="col-md-3">
+                <label class="form-label">&nbsp;</label>
+                <div class="d-grid">
+                    <button type="button" class="btn btn-outline-primary" id="download-zip-btn">
+                        <i class="bi bi-file-zip me-1"></i>Baixar Certificados (ZIP)
+                    </button>
+                </div>
+                <small class="form-text text-muted">Usa a turma selecionada e data 2025-08-02.</small>
+            </div>
         </form>
         
         <!-- Indicadores de Filtros Ativos -->
@@ -1772,6 +1781,99 @@ document.getElementById('save-all-changes-btn').addEventListener('click', functi
         saveText.textContent = 'Salvar Todas';
         icon.classList.remove('d-none');
     }
+});
+
+// Baixar certificados em ZIP por turma selecionada
+document.addEventListener('DOMContentLoaded', function() {
+    const zipBtn = document.getElementById('download-zip-btn');
+    if (!zipBtn) return;
+
+    zipBtn.addEventListener('click', async function() {
+        const classSelect = document.getElementById('class_filter');
+        const classVal = classSelect ? classSelect.value : '';
+        if (!classVal || classVal === 'ALL_6' || classVal === 'ALL_9') {
+            showToast('error', 'Selecione uma turma específica para baixar o ZIP');
+            return;
+        }
+        const classId = parseInt(classVal, 10);
+        if (Number.isNaN(classId)) {
+            showToast('error', 'Seleção de turma inválida');
+            return;
+        }
+
+        zipBtn.disabled = true;
+        const originalHtml = zipBtn.innerHTML;
+        zipBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Gerando ZIP...';
+
+        try {
+            // Capturar filtro opcional de professor
+            const teacherSelect = document.getElementById('teacher_filter');
+            const teacherVal = teacherSelect ? teacherSelect.value : '';
+            let teacherIdParam = null;
+            if (teacherVal === '0') {
+                teacherIdParam = 0; // Sem professor
+            } else if (teacherVal && !Number.isNaN(parseInt(teacherVal, 10))) {
+                teacherIdParam = parseInt(teacherVal, 10);
+            }
+
+            const payload = { class_id: classId, certificate_date: '2025-08-02' };
+            if (teacherIdParam !== null) payload.teacher_id = teacherIdParam;
+
+            const resp = await fetch('/api/certificate/download-zip', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!resp.ok) {
+                let errMsg = `HTTP ${resp.status}: ${resp.statusText}`;
+                try {
+                    const data = await resp.json();
+                    if (data && data.error) errMsg = data.error;
+                } catch (_) {}
+                throw new Error(errMsg);
+            }
+
+            const blob = await resp.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+
+            // Construir nome: Turma - Professor (preservar espaços e '°')
+            const teacherNameText = (() => {
+                if (!teacherSelect || teacherIdParam === null) return 'Todos Professores';
+                if (teacherIdParam === 0) return 'Sem Professor';
+                const opt = teacherSelect.options[teacherSelect.selectedIndex];
+                return opt ? opt.text : `Professor ${teacherIdParam}`;
+            })();
+            const classNameText = (() => {
+                const opt = classSelect.options[classSelect.selectedIndex];
+                return opt ? opt.text : `Turma ${classId}`;
+            })();
+            const toSafeKeepSpaces = (s) => (s || '')
+                .split('')
+                .filter(ch => /[a-zA-Z0-9 _\-\.]/.test(ch) || ch === '°')
+                .join('')
+                .trim();
+            const classPart = toSafeKeepSpaces(classNameText) || 'Turma';
+            const teacherPart = toSafeKeepSpaces(teacherNameText) || 'Professor';
+            a.download = `${classPart} - ${teacherPart}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+            showToast('success', 'ZIP gerado com sucesso.');
+        } catch (e) {
+            console.error('Erro ao gerar ZIP:', e);
+            showToast('error', e.message || 'Erro ao gerar ZIP.');
+        } finally {
+            zipBtn.disabled = false;
+            zipBtn.innerHTML = originalHtml;
+        }
+    });
 });
 </script>
 {% endblock %}
