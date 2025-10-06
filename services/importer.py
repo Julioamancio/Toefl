@@ -444,13 +444,13 @@ class ExcelImporter:
                 elif student.turma_meta:
                     rotulo_escolar = str(student.turma_meta).strip().replace(',', '.')
 
-                if student.total is not None:
-                    csa_result = compute_listening_csa(rotulo_escolar, student.total, turma_name=turma_name)
+                if student.listening is not None:
+                    csa_result = compute_listening_csa(rotulo_escolar, student.listening, turma_name=turma_name)
                     student.listening_csa_points = csa_result.get("points")
                     print(f"DEBUG: Listening CSA calculado: {student.listening_csa_points}")
                     # Log de alteração
                     logging.getLogger('calculation').info(
-                        f"CSA calc: id={student.id} turma={turma_name} nivel={rotulo_escolar} total={student.total} cefr={student.cefr_geral} listening_csa={student.listening_csa_points}"
+                        f"CSA calc: id={student.id} turma={turma_name} nivel={rotulo_escolar} listening={student.listening} cefr={student.cefr_geral} listening_csa={student.listening_csa_points}"
                     )
                 else:
                     # Aviso se nível vazio em FUND-9
@@ -577,13 +577,13 @@ class ExcelImporter:
                 elif student.turma_meta:
                     rotulo_escolar = str(student.turma_meta).strip().replace(',', '.')
 
-                if student.total is not None:
-                    csa_result = compute_listening_csa(rotulo_escolar, student.total, turma_name=turma_name)
+                if student.listening is not None:
+                    csa_result = compute_listening_csa(rotulo_escolar, student.listening, turma_name=turma_name)
                     student.listening_csa_points = csa_result.get("points")
                     print(f"DEBUG: Listening CSA atualizado: {student.listening_csa_points}")
                     # Log de alteração
                     logging.getLogger('calculation').info(
-                        f"CSA calc: id={student.id} turma={turma_name} nivel={rotulo_escolar} total={student.total} cefr={student.cefr_geral} listening_csa={student.listening_csa_points}"
+                        f"CSA calc: id={student.id} turma={turma_name} nivel={rotulo_escolar} listening={student.listening} cefr={student.cefr_geral} listening_csa={student.listening_csa_points}"
                     )
                 else:
                     if turma_name and turma_name.upper().startswith('FUND-9') and not rotulo_escolar:

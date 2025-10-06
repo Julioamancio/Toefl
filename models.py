@@ -174,7 +174,7 @@ class Student(db.Model):
     
     def update_toefl_calculations(self):
         """Atualiza cálculos relacionados ao TOEFL"""
-        # Atualizar listening_csa_points baseado em score_total e grupo (turma/nivel)
+        # Atualizar listening_csa_points baseado em listening score e grupo (turma/nivel)
         from listening_csa import compute_listening_csa
         try:
             # Se estiver marcado como manual, não sobrescrever
@@ -189,8 +189,8 @@ class Student(db.Model):
             elif self.turma_meta:
                 rotulo_escolar = str(self.turma_meta).strip().replace(',', '.')
 
-            if self.total is not None:
-                result = compute_listening_csa(rotulo_escolar, self.total, turma_name=turma_name)
+            if self.listening is not None:
+                result = compute_listening_csa(rotulo_escolar, self.listening, turma_name=turma_name)
                 self.listening_csa_points = result.get('points')
             else:
                 self.listening_csa_points = None
@@ -198,10 +198,11 @@ class Student(db.Model):
             self.listening_csa_points = None
 
     def compute_listening_csa(self):
-        """Calcula o Listening CSA baseado em turma_meta/class_info e score_total"""
+        """Retorna o Listening CSA baseado nos valores salvos no banco de dados"""
         try:
-            # Se há valor manual, retornar dados combinando com níveis esperados/obtidos
-            if getattr(self, 'listening_csa_is_manual', False) and self.listening_csa_points is not None:
+            # SEMPRE usar os valores salvos no banco de dados
+            if self.listening_csa_points is not None:
+                # Determinar rótulo escolar para calcular níveis esperados/obtidos
                 rotulo_escolar = None
                 turma_name = None
                 if self.class_info:
@@ -210,28 +211,30 @@ class Student(db.Model):
                         rotulo_escolar = str(self.class_info.meta_label).strip().replace(',', '.')
                 elif self.turma_meta:
                     rotulo_escolar = str(self.turma_meta).strip().replace(',', '.')
-                if self.total is not None:
+                
+                # Calcular níveis esperados/obtidos para contexto
+                if self.listening is not None and rotulo_escolar:
                     from listening_csa import compute_listening_csa
-                    base = compute_listening_csa(rotulo_escolar, self.total, turma_name=turma_name) or {}
+                    base = compute_listening_csa(rotulo_escolar, self.listening, turma_name=turma_name) or {}
+                    # Usar os pontos salvos no banco, não os recalculados
                     base['points'] = float(self.listening_csa_points)
                     return base
-            rotulo_escolar = None
-            turma_name = None
-            if self.class_info:
-                turma_name = self.class_info.name
-                if self.class_info.meta_label:
-                    rotulo_escolar = str(self.class_info.meta_label).strip().replace(',', '.')
-            elif self.turma_meta:
-                rotulo_escolar = str(self.turma_meta).strip().replace(',', '.')
-            if self.total is not None:
-                from listening_csa import compute_listening_csa
-                return compute_listening_csa(rotulo_escolar, self.total, turma_name=turma_name)
+                else:
+                    # Retornar apenas os pontos se não conseguir calcular níveis
+                    return {
+                        'points': float(self.listening_csa_points),
+                        'expected_level': None,
+                        'obtained_level': None,
+                        'adjustment': 0
+                    }
+            
+            # Se não há valor salvo, retornar None
+            return None
         except Exception:
             return None
-        return None
 
     def get_listening_csa_points(self):
-        """Retorna apenas os pontos do Listening CSA (via score_total)."""
+        """Retorna apenas os pontos do Listening CSA (via listening score)."""
         try:
             rotulo_escolar = None
             turma_name = None
@@ -241,9 +244,9 @@ class Student(db.Model):
                     rotulo_escolar = str(self.class_info.meta_label).strip().replace(',', '.')
             elif self.turma_meta:
                 rotulo_escolar = str(self.turma_meta).strip().replace(',', '.')
-            if self.total is not None:
+            if self.listening is not None:
                 from listening_csa import compute_listening_csa
-                result = compute_listening_csa(rotulo_escolar, self.total, turma_name=turma_name)
+                result = compute_listening_csa(rotulo_escolar, self.listening, turma_name=turma_name)
                 return result.get('points') if result else None
         except Exception:
             return None

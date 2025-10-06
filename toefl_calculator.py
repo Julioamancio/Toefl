@@ -40,18 +40,18 @@ def school_label(turma_meta: Optional[str]) -> Optional[str]:
         return None
 
 
-def grade_listening(score_total: Optional[int], turma_meta: Optional[str], turma_name: Optional[str] = None) -> Optional[float]:
+def grade_listening(listening_score: Optional[int], turma_meta: Optional[str], turma_name: Optional[str] = None) -> Optional[float]:
     """
-    Calcula CSA Listening (0–5) baseado em score_total (600–900) e turma/nivel.
+    Calcula CSA Listening (0–5) baseado em listening score (200–300) e turma/nivel.
     """
-    if score_total is None:
+    if listening_score is None:
         return None
     try:
         from listening_csa import compute_listening_csa
         rotulo = None
         if turma_meta not in (None, ""):
             rotulo = str(turma_meta).strip().replace(",", ".")
-        result = compute_listening_csa(rotulo, score_total, turma_name=turma_name)
+        result = compute_listening_csa(rotulo, listening_score, turma_name=turma_name)
         return result.get("points")
     except Exception:
         return None
