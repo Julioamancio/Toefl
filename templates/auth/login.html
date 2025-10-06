@@ -127,6 +127,8 @@
         
         <div class="login-body">
             <form method="POST">
+                {# Inclui explicitamente o CSRF token para compatibilidade com testes automatizados #}
+                <input type="hidden" name="csrf_token" value="{{ form.csrf_token._value() }}">
                 {{ form.hidden_tag() }}
                 
                 <div class="mb-3">

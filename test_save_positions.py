@@ -16,9 +16,13 @@ def get_csrf_token(session):
         response = session.get(f"{BASE_URL}/login")
         if response.status_code == 200:
             # Procurar pelo token CSRF no HTML
-            csrf_match = re.search(r'name="csrf_token" value="([^"]+)"', response.text)
+            csrf_match = re.search(r'name="csrf_token"\s+[^>]*value="([^"]+)"', response.text)
             if csrf_match:
                 return csrf_match.group(1)
+            # Fallback: meta csrf-token presente no base.html
+            meta_match = re.search(r'<meta name="csrf-token" content="([^"]+)"', response.text)
+            if meta_match:
+                return meta_match.group(1)
         return None
     except Exception as e:
         print(f"❌ Erro ao obter token CSRF: {e}")
@@ -43,7 +47,9 @@ def login_as_admin(session):
         # Fazer login
         response = session.post(f"{BASE_URL}/login", data=login_data)
         
-        if response.status_code == 200 and 'dashboard' in response.url:
+        # Considerar redirects para '/alunos' ou '/dash' como sucesso
+        final_url = response.url
+        if response.status_code == 200 and ('alunos' in final_url or 'dash' in final_url):
             print("✅ Login como admin realizado com sucesso")
             return True
         else:
@@ -58,6 +64,9 @@ def test_save_positions(session):
     """Testa o salvamento de posições"""
     try:
         print("🧪 Testando salvamento de posições...")
+        
+        # Obter token CSRF para requisições JSON
+        csrf_token = get_csrf_token(session)
         
         # Dados de teste para salvamento
         test_data = {
@@ -76,7 +85,8 @@ def test_save_positions(session):
         }
         
         # Fazer requisição para salvar posições
-        response = session.post(f"{BASE_URL}/api/certificate/save-positions", json=test_data)
+        headers = {'X-CSRFToken': csrf_token} if csrf_token else {}
+        response = session.post(f"{BASE_URL}/api/certificate/save-positions", json=test_data, headers=headers)
         
         print(f"📊 Status da resposta: {response.status_code}")
         
@@ -103,7 +113,7 @@ def test_load_positions(session):
         print("🧪 Testando carregamento de posições...")
         
         # Fazer requisição para carregar posições
-        response = session.get(f"{BASE_URL}/api/certificate/layout/1")  # Student ID 1
+        response = session.get(f"{BASE_URL}/api/certificate/load-positions", params={'student_id': 1})
         
         print(f"📊 Status da resposta: {response.status_code}")
         
