@@ -586,9 +586,11 @@ def create_app(config_name=None):
             elif sort == 'name_desc':
                 query = query.order_by(Student.name.desc())
             elif sort == 'class':
-                query = query.join(Class).order_by(Class.name.asc())
+                # Class já foi joinado na linha 536, não precisa fazer JOIN novamente
+                query = query.order_by(Class.name.asc())
             elif sort == 'class_desc':
-                query = query.join(Class).order_by(Class.name.desc())
+                # Class já foi joinado na linha 536, não precisa fazer JOIN novamente
+                query = query.order_by(Class.name.desc())
             elif sort == 'total_desc':
                 query = query.order_by(Student.total.desc())
             elif sort == 'total':
