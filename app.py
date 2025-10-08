@@ -868,6 +868,170 @@ def create_app(config_name=None):
             student = Student.query.get_or_404(student_id)
             return render_template('reports/student_report.html', student=student)
 
+        @app.route('/students/add')
+        @login_required
+        @admin_required
+        def add_student_form():
+            """Exibe o formulário para adicionar um novo aluno"""
+            classes = Class.query.all()
+            teachers = Teacher.query.all()
+            return render_template('students/add.html', classes=classes, teachers=teachers)
+
+        @app.route('/students/add', methods=['POST'])
+        @login_required
+        @admin_required
+        def add_student():
+            """Processa a criação de um novo aluno"""
+            try:
+                # DEBUG: Log todos os dados recebidos
+                print("=== DEBUG ADD STUDENT ===")
+                print("Form data recebido:")
+                for key, value in request.form.items():
+                    print(f"  {key}: '{value}'")
+                print("========================")
+                
+                # Validar campos obrigatórios
+                name = request.form.get('name', '').strip()
+                student_number = request.form.get('student_number', '').strip()
+                
+                if not name or not student_number:
+                    flash('Nome e Número do Aluno são obrigatórios.', 'error')
+                    return redirect(url_for('add_student_form'))
+                
+                # Verificar se o número do aluno já existe
+                existing_student = Student.query.filter_by(student_number=student_number).first()
+                if existing_student:
+                    flash(f'Já existe um aluno com o número {student_number}.', 'error')
+                    return redirect(url_for('add_student_form'))
+                
+                # Criar novo aluno
+                new_student = Student(
+                    name=name,
+                    student_number=student_number
+                )
+                
+                # Campos opcionais - dados básicos
+                new_student.found_name = request.form.get('found_name', '').strip() or None
+                new_student.import_sheet_name = request.form.get('import_sheet_name', '').strip() or None
+                
+                # Associações
+                class_id = request.form.get('class_id')
+                if class_id and class_id.isdigit():
+                    new_student.class_id = int(class_id)
+                
+                teacher_id = request.form.get('teacher_id')
+                if teacher_id and teacher_id.isdigit():
+                    new_student.teacher_id = int(teacher_id)
+                
+                new_student.turma_meta = request.form.get('turma_meta', '').strip() or None
+                
+                # Pontuações
+                listening = request.form.get('listening')
+                print(f"DEBUG: listening raw = '{listening}'")
+                if listening and listening.isdigit():
+                    listening_val = int(listening)
+                    print(f"DEBUG: listening_val = {listening_val}")
+                    if 0 <= listening_val <= 300:
+                        new_student.listening = listening_val
+                        print(f"DEBUG: listening salvo = {new_student.listening}")
+                    else:
+                        print(f"DEBUG: listening fora do range: {listening_val}")
+                else:
+                    print(f"DEBUG: listening inválido ou vazio: '{listening}'")
+                
+                reading = request.form.get('reading')
+                print(f"DEBUG: reading raw = '{reading}'")
+                if reading and reading.isdigit():
+                    reading_val = int(reading)
+                    print(f"DEBUG: reading_val = {reading_val}")
+                    if 0 <= reading_val <= 300:
+                        new_student.reading = reading_val
+                        print(f"DEBUG: reading salvo = {new_student.reading}")
+                    else:
+                        print(f"DEBUG: reading fora do range: {reading_val}")
+                else:
+                    print(f"DEBUG: reading inválido ou vazio: '{reading}'")
+                
+                lfm = request.form.get('lfm')
+                print(f"DEBUG: lfm raw = '{lfm}'")
+                if lfm and lfm.isdigit():
+                    lfm_val = int(lfm)
+                    print(f"DEBUG: lfm_val = {lfm_val}")
+                    if 0 <= lfm_val <= 300:
+                        new_student.lfm = lfm_val
+                        print(f"DEBUG: lfm salvo = {new_student.lfm}")
+                    else:
+                        print(f"DEBUG: lfm fora do range: {lfm_val}")
+                else:
+                    print(f"DEBUG: lfm inválido ou vazio: '{lfm}'")
+                
+                total = request.form.get('total')
+                print(f"DEBUG: total raw = '{total}'")
+                if total and total.isdigit():
+                    total_val = int(total)
+                    print(f"DEBUG: total_val = {total_val}")
+                    if 0 <= total_val <= 900:
+                        new_student.total = total_val
+                        print(f"DEBUG: total salvo = {new_student.total}")
+                    else:
+                        print(f"DEBUG: total fora do range: {total_val}")
+                else:
+                    print(f"DEBUG: total inválido ou vazio: '{total}'")
+                
+                # Níveis CEFR
+                new_student.list_cefr = request.form.get('list_cefr', '').strip() or None
+                new_student.read_cefr = request.form.get('read_cefr', '').strip() or None
+                new_student.lfm_cefr = request.form.get('lfm_cefr', '').strip() or None
+                new_student.cefr_geral = request.form.get('cefr_geral', '').strip() or None
+                
+                # Campos adicionais
+                new_student.lexile = request.form.get('lexile', '').strip() or None
+                
+                listening_csa = request.form.get('listening_csa_points')
+                if listening_csa:
+                    try:
+                        new_student.listening_csa_points = float(listening_csa)
+                    except ValueError:
+                        pass
+                
+                new_student.listening_csa_is_manual = bool(request.form.get('listening_csa_is_manual'))
+                
+                # Salvar no banco
+                db.session.add(new_student)
+                db.session.commit()
+                
+                # Criar ComputedLevel automaticamente
+                try:
+                    from models import ComputedLevel, calculate_student_levels
+                    levels, applied_rules = calculate_student_levels(new_student)
+                    
+                    computed_level = ComputedLevel(
+                        student_id=new_student.id,
+                        school_level=levels.get('school_level'),
+                        listening_level=levels.get('listening_level'),
+                        lfm_level=levels.get('lfm_level'),
+                        reading_level=levels.get('reading_level'),
+                        overall_level=levels.get('overall_level'),
+                        applied_rules='\n'.join(applied_rules)
+                    )
+                    
+                    db.session.add(computed_level)
+                    db.session.commit()
+                    
+                    print(f"DEBUG: ComputedLevel criado para {name}: {levels}")
+                    
+                except Exception as e:
+                    print(f"DEBUG: Erro ao criar ComputedLevel para {name}: {str(e)}")
+                    # Não falhar a criação do estudante por causa do ComputedLevel
+                
+                flash(f'Aluno {name} adicionado com sucesso!', 'success')
+                return redirect(url_for('students'))
+                
+            except Exception as e:
+                db.session.rollback()
+                flash(f'Erro ao adicionar aluno: {str(e)}', 'error')
+                return redirect(url_for('add_student_form'))
+
         @app.route('/classes')
         @login_required
         def classes():
@@ -1142,7 +1306,7 @@ def create_app(config_name=None):
                 writer = csv.writer(output)
                 writer.writerow([
                     'id','name','student_number','class_id','class_name','import_sheet_name','turma_meta',
-                    'listening','reading','lfm','total','cefr_geral','list_cefr','read_cefr','lfm_cefr','lexile','osl'
+                    'listening','reading','lfm','total','cefr_geral','list_cefr','read_cefr','lfm_cefr','lexile'
                 ])
                 for s in students:
                     writer.writerow([
@@ -1161,8 +1325,7 @@ def create_app(config_name=None):
                         s.list_cefr or '',
                         s.read_cefr or '',
                         s.lfm_cefr or '',
-                        s.lexile or '',
-                        s.osl or ''
+                        s.lexile or ''
                     ])
 
                 output.seek(0)

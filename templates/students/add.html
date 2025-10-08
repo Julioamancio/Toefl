@@ -1,0 +1,554 @@
+{% extends "base.html" %}
+
+{% block title %}Adicionar Aluno - TOEFL{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="bi bi-person-plus me-2"></i>Adicionar Aluno</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{{ url_for('students') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Voltar à Lista
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-person-fill me-2"></i>Dados do Aluno
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('add_student') }}" id="addStudentForm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    
+                    <!-- Dados Básicos -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-muted mb-3">
+                                <i class="bi bi-info-circle me-1"></i>Informações Básicas
+                            </h6>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="name" class="form-label">Nome Completo <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" name="name" required 
+                                   placeholder="Digite o nome completo do aluno">
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="student_number" class="form-label">Número do Aluno <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="student_number" name="student_number" required 
+                                   placeholder="Ex: 2024001">
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="found_name" class="form-label">Nome Encontrado</label>
+                            <input type="text" class="form-control" id="found_name" name="found_name" 
+                                   placeholder="Nome como foi encontrado/importado (opcional)">
+                            <small class="form-text text-muted">Campo usado para controle de importação</small>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="import_sheet_name" class="form-label">Origem dos Dados</label>
+                            <input type="text" class="form-control" id="import_sheet_name" name="import_sheet_name" 
+                                   placeholder="Ex: Planilha Manual, Colégio XYZ">
+                            <small class="form-text text-muted">Identifica a origem dos dados</small>
+                        </div>
+                    </div>
+
+                    <!-- Associações -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-muted mb-3">
+                                <i class="bi bi-diagram-3 me-1"></i>Associações
+                            </h6>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label for="class_id" class="form-label">Turma</label>
+                            <select class="form-select" id="class_id" name="class_id">
+                                <option value="">Selecione uma turma</option>
+                                {% for class in classes %}
+                                <option value="{{ class.id }}">{{ class.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label for="teacher_id" class="form-label">Professor</label>
+                            <select class="form-select" id="teacher_id" name="teacher_id">
+                                <option value="">Selecione um professor</option>
+                                {% for teacher in teachers %}
+                                <option value="{{ teacher.id }}">{{ teacher.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label for="turma_meta" class="form-label">Nível Escolar</label>
+                            <select class="form-select" id="turma_meta" name="turma_meta">
+                                <option value="">Selecione o nível</option>
+                                <option value="6.1">6º Ano - Turma 1</option>
+                                <option value="6.2">6º Ano - Turma 2</option>
+                                <option value="6.3">6º Ano - Turma 3</option>
+                                <option value="9.1">9º Ano - Turma 1</option>
+                                <option value="9.2">9º Ano - Turma 2</option>
+                                <option value="9.3">9º Ano - Turma 3</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Pontuações -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-muted mb-3">
+                                <i class="bi bi-bar-chart me-1"></i>Pontuações e Níveis CEFR
+                            </h6>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label for="listening" class="form-label">Listening</label>
+                            <input type="number" class="form-control" id="listening" name="listening" 
+                                   min="0" max="300" placeholder="0-300">
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label for="list_cefr" class="form-label">Listening CEFR</label>
+                            <select class="form-select" id="list_cefr" name="list_cefr">
+                                <option value="">Selecione</option>
+                                <option value="Below A1">Below A1</option>
+                                <option value="A1">A1</option>
+                                <option value="A2">A2</option>
+                                <option value="A2+">A2+</option>
+                                <option value="B1">B1</option>
+                                <option value="B2">B2</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label for="reading" class="form-label">Reading</label>
+                            <input type="number" class="form-control" id="reading" name="reading" 
+                                   min="0" max="300" placeholder="0-300">
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label for="read_cefr" class="form-label">Reading CEFR</label>
+                            <select class="form-select" id="read_cefr" name="read_cefr">
+                                <option value="">Selecione</option>
+                                <option value="Below A1">Below A1</option>
+                                <option value="A1">A1</option>
+                                <option value="A2">A2</option>
+                                <option value="A2+">A2+</option>
+                                <option value="B1">B1</option>
+                                <option value="B2">B2</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label for="lfm" class="form-label">LFM</label>
+                            <input type="number" class="form-control" id="lfm" name="lfm" 
+                                   min="0" max="300" placeholder="0-300">
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label for="lfm_cefr" class="form-label">LFM CEFR</label>
+                            <select class="form-select" id="lfm_cefr" name="lfm_cefr">
+                                <option value="">Selecione</option>
+                                <option value="Below A1">Below A1</option>
+                                <option value="A1">A1</option>
+                                <option value="A2">A2</option>
+                                <option value="A2+">A2+</option>
+                                <option value="B1">B1</option>
+                                <option value="B2">B2</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label for="total" class="form-label">Total</label>
+                            <input type="number" class="form-control" id="total" name="total" 
+                                   min="0" max="900" placeholder="0-900">
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label for="cefr_geral" class="form-label">CEFR Geral</label>
+                            <select class="form-select" id="cefr_geral" name="cefr_geral">
+                                <option value="">Selecione</option>
+                                <option value="Below A1">Below A1</option>
+                                <option value="A1">A1</option>
+                                <option value="A2">A2</option>
+                                <option value="A2+">A2+</option>
+                                <option value="B1">B1</option>
+                                <option value="B2">B2</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Campos Adicionais -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-muted mb-3">
+                                <i class="bi bi-gear me-1"></i>Campos Adicionais
+                            </h6>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label for="lexile" class="form-label">Lexile</label>
+                            <input type="text" class="form-control" id="lexile" name="lexile" 
+                                   placeholder="Ex: 850L">
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label for="listening_csa_points" class="form-label">Listening CSA</label>
+                            <input type="number" class="form-control" id="listening_csa_points" name="listening_csa_points" 
+                                   step="0.1" min="0" placeholder="Ex: 15.5">
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" id="listening_csa_is_manual" 
+                                       name="listening_csa_is_manual" value="1">
+                                <label class="form-check-label" for="listening_csa_is_manual">
+                                    Listening CSA Manual
+                                </label>
+                                <small class="form-text text-muted d-block">
+                                    Marque se o valor foi inserido manualmente
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botões -->
+                    <div class="row">
+                        <div class="col-12">
+                            <hr>
+                            <div class="d-flex justify-content-between">
+                                <a href="{{ url_for('students') }}" class="btn btn-outline-secondary">
+                                    <i class="bi bi-x-circle me-1"></i>Cancelar
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check-circle me-1"></i>Adicionar Aluno
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Painel de Ajuda -->
+    <div class="col-lg-4">
+        <div class="card shadow">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-question-circle me-2"></i>Ajuda
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6 class="text-primary">Campos Obrigatórios</h6>
+                    <ul class="list-unstyled small">
+                        <li><i class="bi bi-check-circle text-success me-1"></i>Nome Completo</li>
+                        <li><i class="bi bi-check-circle text-success me-1"></i>Número do Aluno</li>
+                    </ul>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-primary">Pontuações</h6>
+                    <ul class="list-unstyled small">
+                        <li><strong>Listening/Reading/LFM:</strong> 0-300 pontos</li>
+                        <li><strong>Total:</strong> 0-900 pontos</li>
+                        <li><strong>CEFR:</strong> Below A1, A1, A2, A2+, B1, B2</li>
+                    </ul>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-primary">Cálculos Automáticos</h6>
+                    <ul class="list-unstyled small">
+                        <li><strong>Lexile:</strong> Calculado automaticamente baseado no nível CEFR</li>
+                        <li><strong>Listening CSA:</strong> Calculado automaticamente baseado na pontuação de Listening e nível escolar</li>
+                        <li><strong>Total:</strong> Soma automática de Listening + Reading + LFM</li>
+                    </ul>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-primary">Nível Escolar</h6>
+                    <ul class="list-unstyled small">
+                        <li><strong>6.1, 6.2, 6.3:</strong> 6º Ano</li>
+                        <li><strong>9.1, 9.2, 9.3:</strong> 9º Ano</li>
+                    </ul>
+                </div>
+                
+                <div class="alert alert-info small">
+                    <i class="bi bi-info-circle me-1"></i>
+                    <strong>Dica:</strong> Você pode deixar campos opcionais em branco. 
+                    Eles podem ser preenchidos posteriormente através da edição do aluno.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-calcular total quando as pontuações individuais mudarem
+    const listeningInput = document.getElementById('listening');
+    const readingInput = document.getElementById('reading');
+    const lfmInput = document.getElementById('lfm');
+    const totalInput = document.getElementById('total');
+    const lexileInput = document.getElementById('lexile');
+    const listeningCsaInput = document.getElementById('listening_csa_points');
+    const listeningCsaManualCheckbox = document.getElementById('listening_csa_is_manual');
+    
+    // Campos CEFR individuais
+    const listCefrSelect = document.getElementById('list_cefr');
+    const readCefrSelect = document.getElementById('read_cefr');
+    const lfmCefrSelect = document.getElementById('lfm_cefr');
+    
+    // Campos de turma e nível escolar
+    const turmaSelect = document.getElementById('class_id');
+    const nivelEscolarSelect = document.getElementById('turma_meta');
+    
+    // Debug: verificar se os elementos foram encontrados
+    console.log('Elementos encontrados:', {
+        listeningInput: !!listeningInput,
+        listeningCsaInput: !!listeningCsaInput,
+        listeningCsaManualCheckbox: !!listeningCsaManualCheckbox,
+        nivelEscolarSelect: !!nivelEscolarSelect,
+        turmaSelect: !!turmaSelect
+    });
+    
+    // Função para calcular CEFR individual baseado na pontuação (mesma lógica do models.py)
+    function calculateCefrByScore(score) {
+        if (!score || score < 200) return 'A1';
+        if (score < 215) return 'A1';
+        else if (score < 245) return 'A2';
+        else if (score < 250) return 'A2+';
+        else if (score < 275) return 'B1';
+        else return 'B2';
+    }
+    
+    // Função para calcular CEFR geral baseado no total (mesma lógica do models.py)
+    function calculateFinalCefr(total) {
+        if (!total) return 'Below A1';
+        if (total >= 865) return 'B2';
+        else if (total >= 730) return 'B1';
+        else if (total >= 650) return 'A2+';
+        else if (total >= 600) return 'A2';
+        else return 'Below A1';
+    }
+    
+    function calculateTotal() {
+        const listening = parseInt(listeningInput.value) || 0;
+        const reading = parseInt(readingInput.value) || 0;
+        const lfm = parseInt(lfmInput.value) || 0;
+        
+        if (listening > 0 || reading > 0 || lfm > 0) {
+            const total = listening + reading + lfm;
+            totalInput.value = total;
+            
+            // Atualizar CEFR individuais automaticamente
+            if (listening > 0 && listCefrSelect) {
+                listCefrSelect.value = calculateCefrByScore(listening);
+            }
+            if (reading > 0 && readCefrSelect) {
+                readCefrSelect.value = calculateCefrByScore(reading);
+            }
+            if (lfm > 0 && lfmCefrSelect) {
+                lfmCefrSelect.value = calculateCefrByScore(lfm);
+            }
+            
+            // Calcular CEFR geral e atualizar Lexile (se existir campo)
+            const cefrGeral = calculateFinalCefr(total);
+            updateLexileFromCefr(cefrGeral);
+        }
+    }
+    
+    function updateLexileFromCefr(cefrLevel) {
+        // Mapeamento baseado no padrão observado no sistema (se não houver lógica específica)
+        const cefrToLexile = {
+            'Below A1': '200L',
+            'A1': '400L',
+            'A2': '600L',
+            'A2+': '750L',
+            'B1': '900L',
+            'B2': '1200L'
+        };
+        
+        if (lexileInput && cefrToLexile[cefrLevel]) {
+            lexileInput.value = cefrToLexile[cefrLevel];
+        }
+    }
+    
+    // Função para limitar e arredondar (mesma lógica do listening_csa.py)
+    function clampAndRound(points) {
+        points = Math.max(0.0, Math.min(5.0, points));
+        return Math.round((points + 1e-9) * 100) / 100;
+    }
+    
+    // Cálculo CSA 6º ano (mesma lógica do listening_csa.py)
+    function csa6th(listeningScore) {
+        if (!listeningScore) return 3.0;
+        if (listeningScore < 200) return 3.0;
+        if (listeningScore <= 245) {
+            return 3.0 + ((listeningScore - 200) / (245 - 200)) * (5.0 - 3.0);
+        }
+        return 5.0;
+    }
+    
+    // Cálculo CSA 9.1 (mesma lógica do listening_csa.py)
+    function csa91(listeningScore) {
+        if (!listeningScore) return 2.0;
+        if (listeningScore < 200) return 2.0;
+        if (listeningScore <= 275) {
+            return 2.0 + ((listeningScore - 200) / (275 - 200)) * (5.0 - 2.0);
+        }
+        return 5.0;
+    }
+    
+    // Cálculo CSA 9.2/9.3 (mesma lógica do listening_csa.py)
+    function csa923(listeningScore) {
+        if (!listeningScore) return 0.0;
+        if (listeningScore < 200) return 0.0;
+        if (listeningScore <= 245) {
+            // A2: 200-245 = 0-2
+            return ((listeningScore - 200) / (245 - 200)) * 2.0;
+        } else if (listeningScore <= 275) {
+            // B1: 246-275 = 2-3.5
+            return 2.0 + ((listeningScore - 246) / (275 - 246)) * 1.5;
+        } else {
+            // B2: 276-300 = 3.5-5.0
+            return 3.5 + ((listeningScore - 276) / (300 - 276)) * 1.5;
+        }
+    }
+    
+    function calculateListeningCsa() {
+        // Só calcular se não estiver marcado como manual
+        if (listeningCsaManualCheckbox && listeningCsaManualCheckbox.checked) return;
+        
+        const listening = parseInt(listeningInput.value);
+        if (!listening) {
+            // Limpar o campo se não há pontuação de listening
+            if (listeningCsaInput) {
+                listeningCsaInput.value = '';
+            }
+            return;
+        }
+        
+        // Determinar grupo baseado no nível escolar (mesma lógica do listening_csa.py)
+        const nivelEscolar = nivelEscolarSelect ? nivelEscolarSelect.value : '';
+        const turmaName = turmaSelect ? turmaSelect.options[turmaSelect.selectedIndex]?.text || '' : '';
+        
+        let group = null;
+        const turmaUpper = turmaName.toUpperCase();
+        
+        // Lógica de determinação do grupo (mesma do listening_csa.py)
+        if (turmaUpper.startsWith('FUND-6') || nivelEscolar.startsWith('6')) {
+            group = '6';
+        } else if (turmaUpper.startsWith('FUND-9')) {
+            if (nivelEscolar === '9.1') {
+                group = '9.1';
+            } else {
+                group = '9.23'; // 9.2/9.3 ou vazio
+            }
+        } else {
+            // Sem turma ou turma diferente: inferir pelo rótulo
+            if (nivelEscolar === '9.1') {
+                group = '9.1';
+            } else if (nivelEscolar === '9.2' || nivelEscolar === '9.3') {
+                group = '9.23';
+            } else if (nivelEscolar.startsWith('6')) {
+                group = '6';
+            }
+        }
+        
+        // Se não conseguiu determinar o grupo, usar padrão 9.2/9.3 (mais conservador)
+        if (!group) {
+            group = '9.23';
+        }
+        
+        // Calcular CSA baseado no grupo
+        let csa = 0;
+        if (group === '6') {
+            csa = csa6th(listening);
+        } else if (group === '9.1') {
+            csa = csa91(listening);
+        } else {
+            csa = csa923(listening);
+        }
+        
+        // Aplicar limitação e arredondamento
+        if (listeningCsaInput) {
+            listeningCsaInput.value = clampAndRound(csa);
+        }
+        
+        // Debug: mostrar no console qual grupo foi usado (remover em produção)
+        console.log(`Listening CSA calculado: ${clampAndRound(csa)} (Grupo: ${group}, Listening: ${listening}, Nível: ${nivelEscolar})`);
+    }
+    
+    // Event listeners
+    listeningInput.addEventListener('input', function() {
+        calculateTotal();
+        calculateListeningCsa();
+    });
+    readingInput.addEventListener('input', calculateTotal);
+    lfmInput.addEventListener('input', calculateTotal);
+    
+    if (nivelEscolarSelect) {
+        nivelEscolarSelect.addEventListener('change', calculateListeningCsa);
+    }
+    if (turmaSelect) {
+        turmaSelect.addEventListener('change', calculateListeningCsa);
+    }
+    if (listeningCsaManualCheckbox) {
+        listeningCsaManualCheckbox.addEventListener('change', function() {
+            if (!this.checked) {
+                calculateListeningCsa();
+            }
+        });
+    }
+    
+    // Calcular CSA inicial se já houver valores preenchidos
+    if (listeningInput.value) {
+        calculateListeningCsa();
+    }
+    
+    // Validação do formulário
+    document.getElementById('addStudentForm').addEventListener('submit', function(e) {
+        const name = document.getElementById('name').value.trim();
+        const studentNumber = document.getElementById('student_number').value.trim();
+        
+        if (!name || !studentNumber) {
+            e.preventDefault();
+            alert('Por favor, preencha os campos obrigatórios: Nome Completo e Número do Aluno.');
+            return false;
+        }
+        
+        // Validar pontuações com novos limites
+        const scores = ['listening', 'reading', 'lfm'];
+        for (let score of scores) {
+            const value = parseInt(document.getElementById(score).value);
+            if (value && (value < 0 || value > 300)) {
+                e.preventDefault();
+                alert(`A pontuação de ${score} deve estar entre 0 e 300.`);
+                return false;
+            }
+        }
+        
+        const total = parseInt(document.getElementById('total').value);
+        if (total && (total < 0 || total > 900)) {
+            e.preventDefault();
+            alert('A pontuação total deve estar entre 0 e 900.');
+            return false;
+        }
+        
+        // Se chegou até aqui, todas as validações passaram
+        // Permitir que o formulário seja submetido normalmente
+        return true;
+    });
+});
+</script>
+{% endblock %}

@@ -254,7 +254,6 @@ def get_students():
             
             # Outros dados
             'lexile': student.lexile,
-            'osl': student.osl,
             'class_name': student.class_info.name if student.class_info else None,
             'teacher_name': student.teacher.name if student.teacher else None,
             'import_sheet_name': student.import_sheet_name,
