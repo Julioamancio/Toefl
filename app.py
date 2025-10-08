@@ -1900,6 +1900,12 @@ def create_app(config_name=None):
                 if not student_ids:
                     return jsonify({'error': 'Nenhum aluno selecionado'}), 400
                 
+                # Converter student_ids para inteiros para evitar erro de tipo
+                try:
+                    student_ids = [int(id) for id in student_ids]
+                except (ValueError, TypeError):
+                    return jsonify({'error': 'IDs de alunos inválidos'}), 400
+                
                 students = Student.query.filter(Student.id.in_(student_ids)).all()
                 for student in students:
                     db.session.delete(student)
