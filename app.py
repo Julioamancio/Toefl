@@ -530,10 +530,11 @@ def create_app(config_name=None):
                     base_query = base_query.filter(db.or_(*conditions))
                 return base_query
 
-            # Query base - incluir ComputedLevel e Class para filtros consistentes
+            # Query base - incluir ComputedLevel, Class e Teacher para filtros consistentes
             query = (Student.query
                      .join(ComputedLevel, Student.id == ComputedLevel.student_id, isouter=True)
-                     .join(Class, Student.class_id == Class.id, isouter=True))
+                     .join(Class, Student.class_id == Class.id, isouter=True)
+                     .join(Teacher, Student.teacher_id == Teacher.id, isouter=True))
             
             # Aplicar filtros
             if class_filter:
@@ -591,6 +592,12 @@ def create_app(config_name=None):
             elif sort == 'class_desc':
                 # Class já foi joinado na linha 536, não precisa fazer JOIN novamente
                 query = query.order_by(Class.name.desc())
+            elif sort == 'teacher':
+                # Teacher já foi joinado na linha 537, não precisa fazer JOIN novamente
+                query = query.order_by(Teacher.name.asc())
+            elif sort == 'teacher_desc':
+                # Teacher já foi joinado na linha 537, não precisa fazer JOIN novamente
+                query = query.order_by(Teacher.name.desc())
             elif sort == 'total_desc':
                 query = query.order_by(Student.total.desc())
             elif sort == 'total':

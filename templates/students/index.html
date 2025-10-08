@@ -339,6 +339,9 @@ Pedro; Ana">{{ request.args.get('search', '') }}</textarea>
                     <li><a class="dropdown-item" href="{{ url_for('students', sort='class', **args_without_sort) }}">Turma (A-Z)</a></li>
                     <li><a class="dropdown-item" href="{{ url_for('students', sort='class_desc', **args_without_sort) }}">Turma (Z-A)</a></li>
                     <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="{{ url_for('students', sort='teacher', **args_without_sort) }}">Professor (A-Z)</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('students', sort='teacher_desc', **args_without_sort) }}">Professor (Z-A)</a></li>
+                    <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="{{ url_for('students', sort='total_desc', **args_without_sort) }}">Maior Pontuação</a></li>
                     <li><a class="dropdown-item" href="{{ url_for('students', sort='total', **args_without_sort) }}">Menor Pontuação</a></li>
                     <li><a class="dropdown-item" href="{{ url_for('students', sort='cefr', **args_without_sort) }}">Nível CEFR</a></li>

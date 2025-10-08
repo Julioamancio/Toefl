@@ -259,12 +259,15 @@
             opacity: 0;
             visibility: hidden;
             transition: opacity var(--sidebar-transition);
-            z-index: 1030;
+            z-index: -1;
+            pointer-events: none;
         }
 
         .overlay.is-visible {
             opacity: 1;
             visibility: visible;
+            pointer-events: auto;
+            z-index: 1030;
         }
 
         @media (max-width: 1199.98px) {
@@ -317,6 +320,10 @@
             }
 
             .overlay {
+                z-index: -1;
+            }
+            
+            .overlay.is-visible {
                 z-index: 1050;
             }
         }
