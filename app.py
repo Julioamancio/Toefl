@@ -17,7 +17,7 @@ from pathlib import Path
 from config import config
 from sqlalchemy import inspect, text
 from PIL import Image, ImageDraw, ImageFont
-from functools import lru_cache
+from functools import lru_cache, wraps
 import zipfile
 
 def create_app(config_name=None):
@@ -81,6 +81,15 @@ def create_app(config_name=None):
     
     # Configurar CSRF
     csrf = CSRFProtect(app)
+
+    # Decorator para restringir acesso a administradores
+    def admin_required(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            if not current_user.is_authenticated or not getattr(current_user, 'is_admin', False):
+                return jsonify({'success': False, 'message': 'Acesso restrito a administradores'}), 403
+            return f(*args, **kwargs)
+        return wrapper
     
     # Criar tabelas se não existirem
     with app.app_context():
@@ -795,6 +804,7 @@ def create_app(config_name=None):
 
         @app.route('/student/<int:id>/edit-class', methods=['GET', 'POST'])
         @login_required
+        @admin_required
         def edit_student_class(id):
             student = Student.query.get_or_404(id)
             form = EditStudentClassForm()
@@ -810,6 +820,7 @@ def create_app(config_name=None):
 
         @app.route('/student/<int:id>/edit-turma-meta', methods=['GET', 'POST'])
         @login_required
+        @admin_required
         def edit_student_turma_meta(id):
             student = Student.query.get_or_404(id)
             form = EditStudentTurmaMetaForm()
@@ -825,6 +836,7 @@ def create_app(config_name=None):
 
         @app.route('/student/<int:id>/edit-listening-csa', methods=['GET', 'POST'])
         @login_required
+        @admin_required
         def edit_student_listening_csa(id):
             from forms import EditListeningCSAForm
             student = Student.query.get_or_404(id)
@@ -861,6 +873,7 @@ def create_app(config_name=None):
 
         @app.route('/classes/create', methods=['POST'])
         @login_required
+        @admin_required
         def create_class():
             form = ClassForm()
             if form.validate_on_submit():
@@ -874,6 +887,7 @@ def create_app(config_name=None):
 
         @app.route('/teachers')
         @login_required
+        @admin_required
         def teachers():
             teachers = Teacher.query.all()
             form = TeacherForm()
@@ -881,6 +895,7 @@ def create_app(config_name=None):
 
         @app.route('/teachers/create', methods=['POST'])
         @login_required
+        @admin_required
         def create_teacher():
             form = TeacherForm()
             if form.validate_on_submit():
@@ -894,6 +909,7 @@ def create_app(config_name=None):
 
         @app.route('/teachers/delete-multiple', methods=['POST'])
         @login_required
+        @admin_required
         def delete_multiple_teachers():
             teacher_ids = request.form.getlist('teacher_ids')
             if teacher_ids:
@@ -905,6 +921,7 @@ def create_app(config_name=None):
         # Rotas em Português para edição e deleção de professores (compatibilidade com UI)
         @app.route('/professores/<int:teacher_id>/editar', methods=['GET', 'POST'])
         @login_required
+        @admin_required
         def editar_professor(teacher_id):
             teacher = Teacher.query.get_or_404(teacher_id)
             from forms import TeacherForm
@@ -938,6 +955,7 @@ def create_app(config_name=None):
 
         @app.route('/professores/<int:teacher_id>/deletar', methods=['POST'])
         @login_required
+        @admin_required
         def deletar_professor(teacher_id):
             try:
                 teacher = Teacher.query.get_or_404(teacher_id)
@@ -1632,6 +1650,7 @@ def create_app(config_name=None):
         # Rotas para alteração de dados dos alunos
         @app.route('/api/alunos/<int:student_id>/alterar-professor', methods=['POST'])
         @login_required
+        @admin_required
         def alterar_professor_aluno(student_id):
             try:
                 data = request.get_json()
@@ -1647,6 +1666,7 @@ def create_app(config_name=None):
 
         @app.route('/api/alunos/<int:student_id>/alterar-turma', methods=['POST'])
         @login_required
+        @admin_required
         def alterar_turma_aluno(student_id):
             try:
                 data = request.get_json()
@@ -1662,6 +1682,7 @@ def create_app(config_name=None):
 
         @app.route('/api/alunos/<int:student_id>/alterar-rotulo-escolar', methods=['POST'])
         @login_required
+        @admin_required
         def alterar_rotulo_escolar(student_id):
             try:
                 data = request.get_json()
@@ -1678,6 +1699,7 @@ def create_app(config_name=None):
         # Novo: alterar manualmente o "nome encontrado" do aluno
         @app.route('/api/alunos/<int:student_id>/alterar-nome-encontrado', methods=['POST'])
         @login_required
+        @admin_required
         def alterar_nome_encontrado(student_id):
             try:
                 data = request.get_json() or {}
@@ -1721,6 +1743,7 @@ def create_app(config_name=None):
 
         @app.route('/update_student_teacher', methods=['POST'])
         @login_required
+        @admin_required
         def update_student_teacher():
             try:
                 data = request.get_json()
@@ -2057,6 +2080,7 @@ def create_app(config_name=None):
 
         @app.route('/admin/database/backup', methods=['POST'])
         @login_required
+        @admin_required
         def backup_database():
             """Criar backup do banco de dados"""
             try:
@@ -2086,6 +2110,7 @@ def create_app(config_name=None):
 
         @app.route('/admin/restore-backup', methods=['GET', 'POST'])
         @login_required
+        @admin_required
         def restore_backup():
             """Restaura um backup via painel administrativo (fetch)."""
             if request.method == 'GET':
@@ -2287,6 +2312,7 @@ def create_app(config_name=None):
         # Rota para limpar cache
         @app.route('/api/clear-cache', methods=['POST'])
         @login_required
+        @admin_required
         def clear_cache():
             try:
                 # Implementar limpeza de cache
@@ -2383,6 +2409,7 @@ if __name__ == '__main__':
         insp = inspect(db.engine)
         if not insp.has_table("classes"):
             db.create_all()
-    port = int(os.environ.get('PORT', 5000))
+    # Usar porta fixa 5001 para execução local
+    port = 5001
     print(f"🚀 Servidor iniciando na porta {port}")
     app.run(host='0.0.0.0', port=port, debug=False)

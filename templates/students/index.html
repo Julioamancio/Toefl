@@ -7,9 +7,11 @@
     <h1 class="h2"><i class="bi bi-people me-2"></i>Alunos</h1>
     <div class="btn-toolbar mb-2 mb-md-0">
         <div class="btn-group me-2">
+            {% if current_user.is_admin %}
             <a href="{{ url_for('upload') }}" class="btn btn-sm btn-primary">
                 <i class="bi bi-cloud-upload me-1"></i>Importar Dados
             </a>
+            {% endif %}
             <a href="{{ url_for('export_students') }}" class="btn btn-sm btn-outline-success">
                 <i class="bi bi-download me-1"></i>Exportar CSV
             </a>
@@ -127,6 +129,7 @@ Pedro; Ana">{{ request.args.get('search', '') }}</textarea>
                     </button>
                 </div>
             </div>
+            {% if current_user.is_admin %}
             <div class="col-md-2">
                 <label class="form-label">&nbsp;</label>
                 <div class="d-grid">
@@ -139,6 +142,7 @@ Pedro; Ana">{{ request.args.get('search', '') }}</textarea>
                     </button>
                 </div>
             </div>
+            {% endif %}
             <div class="col-md-3">
                 <label class="form-label">&nbsp;</label>
                 <div class="d-grid">
@@ -294,11 +298,13 @@ Pedro; Ana">{{ request.args.get('search', '') }}</textarea>
         </h6>
         <div class="d-flex align-items-center gap-2">
             <!-- Botões de ação em lote -->
+            {% if current_user.is_admin %}
             <div id="bulkActions" class="d-none">
                 <button type="button" class="btn btn-sm btn-danger" id="deleteSelectedBtn">
                     <i class="bi bi-trash me-1"></i>Deletar Selecionados (<span id="selectedCount">0</span>)
                 </button>
             </div>
+            {% endif %}
             <!-- Botão Selecionar Todos -->
             <div class="form-check">
                 <input class="form-check-input" type="checkbox" id="selectAllVisible" onchange="toggleSelectAllVisible()">
@@ -376,13 +382,16 @@ Pedro; Ana">{{ request.args.get('search', '') }}</textarea>
                                                 <span class="text-muted">-</span>
                                             {% endif %}
                                         </span>
+                                        {% if current_user.is_admin %}
                                         <button type="button" class="btn btn-sm btn-outline-secondary edit-found-name"
                                                 data-student-id="{{ student.id }}"
                                                 data-current-found="{{ found or '' }}"
                                                 title="Editar nome encontrado">
                                             <i class="bi bi-pencil"></i>
                                         </button>
+                                        {% endif %}
                                     </div>
+                                    {% if current_user.is_admin %}
                                     <div class="mt-1 d-none" id="found-name-editor-{{ student.id }}">
                                         <div class="input-group input-group-sm">
                                             <input type="text" class="form-control" maxlength="120"
@@ -396,12 +405,13 @@ Pedro; Ana">{{ request.args.get('search', '') }}</textarea>
                                             </button>
                                         </div>
                                     </div>
+                                    {% endif %}
                                 </td>
                                 <td>
                                     <div class="d-flex align-items-center gap-2">
                                         <select class="form-select form-select-sm teacher-dropdown" 
                                                 data-student-id="{{ student.id }}" 
-                                                data-current-teacher="{{ student.teacher_id or 0 }}">
+                                                data-current-teacher="{{ student.teacher_id or 0 }}" {% if not current_user.is_admin %}disabled{% endif %}>
                                             <option value="0" {% if not student.teacher_id %}selected{% endif %}>Sem professor</option>
                                             {% for teacher in teachers %}
                                                 <option value="{{ teacher.id }}" 
@@ -419,7 +429,7 @@ Pedro; Ana">{{ request.args.get('search', '') }}</textarea>
                                     <div class="d-flex align-items-center gap-2">
                                         <select class="form-select form-select-sm class-dropdown" 
                                                 data-student-id="{{ student.id }}" 
-                                                data-current-class="{{ student.class_id or 0 }}">
+                                                data-current-class="{{ student.class_id or 0 }}" {% if not current_user.is_admin %}disabled{% endif %}>
                                             <option value="0" {% if not student.class_id %}selected{% endif %}>Sem turma</option>
                                             {% for class in classes %}
                                                 <option value="{{ class.id }}" 
@@ -437,7 +447,7 @@ Pedro; Ana">{{ request.args.get('search', '') }}</textarea>
                                     <div class="d-flex align-items-center justify-content-center gap-2">
                                         <select class="form-select form-select-sm school-label-dropdown" 
                                                 data-student-id="{{ student.id }}" 
-                                                data-current-label="{{ student.turma_meta or '' }}">
+                                                data-current-label="{{ student.turma_meta or '' }}" {% if not current_user.is_admin %}disabled{% endif %}>
                                     <option value="" {% if not student.turma_meta %}selected{% endif %}>-</option>
                                     <option value="6.1" {% if student.turma_meta == '6.1' %}selected{% endif %}>6.1</option>
                                     <option value="6.2" {% if student.turma_meta == '6.2' %}selected{% endif %}>6.2</option>
@@ -509,11 +519,13 @@ Pedro; Ana">{{ request.args.get('search', '') }}</textarea>
                                            data-bs-toggle="tooltip" title="Ver Detalhes">
                                             <i class="bi bi-eye"></i>
                                         </a>
+                                        {% if current_user.is_admin %}
                                         <a href="{{ url_for('edit_student_class', id=student.id) }}" 
                                            class="btn btn-outline-warning" 
                                            data-bs-toggle="tooltip" title="Alterar Turma">
                                             <i class="bi bi-collection"></i>
                                         </a>
+                                        {% endif %}
                                         <button type="button" class="btn btn-outline-info" 
                                                 data-bs-toggle="tooltip" title="Informações Rápidas"
                                                 onclick="showQuickInfo({{ student.id }})">
@@ -617,6 +629,7 @@ Pedro; Ana">{{ request.args.get('search', '') }}</textarea>
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const IS_ADMIN = {{ 'true' if current_user.is_admin else 'false' }};
     // Inicializar tooltips
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
@@ -631,6 +644,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Função para salvar alterações pendentes antes de aplicar filtros
     async function saveChangesBeforeFilter() {
+        if (!IS_ADMIN) {
+            return true; // Não salva alterações para não-admins
+        }
         const pendingChanges = [];
         
         // Verificar alterações nos dropdowns de professor
@@ -850,7 +866,9 @@ function showQuickInfo(studentId) {
 <script>
 // Editor de "Nome encontrado"
 document.addEventListener('DOMContentLoaded', function() {
+    const IS_ADMIN = {{ 'true' if current_user.is_admin else 'false' }};
     // Abrir editor
+    if (IS_ADMIN) {
     document.querySelectorAll('.edit-found-name').forEach(btn => {
         btn.addEventListener('click', function() {
             const studentId = this.dataset.studentId;
@@ -909,6 +927,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+    }
 });
 </script>
 
@@ -957,9 +976,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const IS_ADMIN = {{ 'true' if current_user.is_admin else 'false' }};
     // Configurar dropdowns de turma
     const classDropdowns = document.querySelectorAll('.class-dropdown');
     
+    if (IS_ADMIN) {
     classDropdowns.forEach(dropdown => {
         dropdown.addEventListener('change', function() {
             const studentId = this.dataset.studentId;
@@ -1019,8 +1040,10 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     });
+    }
 
     // Event listeners para dropdowns de rótulo escolar
+    if (IS_ADMIN) {
     document.querySelectorAll('.school-label-dropdown').forEach(dropdown => {
         dropdown.addEventListener('change', function() {
             const studentId = this.dataset.studentId;
@@ -1097,6 +1120,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     });
+    }
     
     // Função para mostrar toast notifications
     function showToast(type, message) {

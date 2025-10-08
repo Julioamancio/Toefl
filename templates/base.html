@@ -382,12 +382,14 @@
                             <span class="nav-text">Turmas</span>
                         </a>
                     </li>
+                    {% if current_user.is_admin %}
                     <li class="nav-item">
                         <a class="nav-link {{ 'active' if request.endpoint == 'teachers' }}" href="{{ url_for('teachers') }}">
                             <i class="bi bi-person-badge"></i>
                             <span class="nav-text">Professores</span>
                         </a>
                     </li>
+                    {% endif %}
                     {% if current_user.is_admin %}
                     <li class="nav-item">
                         <a class="nav-link {{ 'active' if request.endpoint == 'admin' }}" href="{{ url_for('admin') }}">
