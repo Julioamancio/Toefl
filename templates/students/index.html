@@ -35,6 +35,13 @@ Pedro; Ana">{{ request.args.get('search', '') }}</textarea>
                     <button class="btn btn-outline-secondary" type="button" id="clearSearch">
                         <i class="bi bi-x"></i>
                     </button>
+                    <!-- Botão para ativar busca por Nome encontrado -->
+                    {% set search_in = request.args.get('search_in', 'name') %}
+                    <input type="hidden" name="search_in" id="search_in" value="{{ search_in }}">
+                    <button class="btn {{ 'btn-outline-primary active' if search_in == 'found' else 'btn-outline-secondary' }}" 
+                            type="button" id="toggleFoundSearch" title="Buscar por Nome encontrado">
+                        <i class="bi bi-person-check"></i>
+                    </button>
                 </div>
                 <small class="form-text text-muted">
                     <i class="bi bi-info-circle me-1"></i>
@@ -158,6 +165,9 @@ Pedro; Ana">{{ request.args.get('search', '') }}</textarea>
         {% set active_filters = [] %}
         {% if request.args.get('search') %}
             {% set _ = active_filters.append(('Busca', request.args.get('search'))) %}
+        {% endif %}
+        {% if request.args.get('search_in') == 'found' %}
+            {% set _ = active_filters.append(('Modo', 'Nome encontrado')) %}
         {% endif %}
         {% if request.args.get('class_filter') %}
             {% if request.args.get('class_filter') == 'ALL_6' %}
@@ -641,6 +651,26 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('search').value = '';
         document.getElementById('filterForm').submit();
     });
+
+    // Alternar modo de busca (Nome encontrado)
+    const toggleBtn = document.getElementById('toggleFoundSearch');
+    const searchInInput = document.getElementById('search_in');
+    if (toggleBtn && searchInInput) {
+        toggleBtn.addEventListener('click', async function() {
+            const current = (searchInInput.value || 'name');
+            searchInInput.value = current === 'found' ? 'name' : 'found';
+            // Ajustar visual do botão imediatamente
+            if (searchInInput.value === 'found') {
+                this.classList.remove('btn-outline-secondary');
+                this.classList.add('btn-outline-primary','active');
+            } else {
+                this.classList.remove('btn-outline-primary','active');
+                this.classList.add('btn-outline-secondary');
+            }
+            await saveChangesBeforeFilter();
+            document.getElementById('filterForm').submit();
+        });
+    }
     
     // Função para salvar alterações pendentes antes de aplicar filtros
     async function saveChangesBeforeFilter() {
@@ -792,14 +822,15 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('filterForm').submit();
     });
     
-    // Busca em tempo real (com debounce)
-    let searchTimeout;
-    document.getElementById('search').addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            document.getElementById('filterForm').submit();
-        }, 500);
-    });
+    // Remover auto-submit enquanto digita; submeter apenas ao clicar em "Filtrar"
+    const filterForm = document.getElementById('filterForm');
+    if (filterForm) {
+        filterForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            await saveChangesBeforeFilter();
+            this.submit();
+        });
+    }
 });
 
 // Função para mostrar informações rápidas

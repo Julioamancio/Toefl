@@ -1,0 +1,20 @@
+name: Deploy Staging (Render)
+
+on:
+  push:
+    branches: [ "staging" ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy hook (staging)
+        env:
+          RENDER_DEPLOY_HOOK_URL_STAGING: ${{ secrets.RENDER_DEPLOY_HOOK_URL_STAGING }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK_URL_STAGING" ]; then
+            echo "RENDER_DEPLOY_HOOK_URL_STAGING secret is not set"
+            exit 1
+          fi
+          curl -fsSL -X POST "$RENDER_DEPLOY_HOOK_URL_STAGING"

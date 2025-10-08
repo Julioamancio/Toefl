@@ -486,6 +486,7 @@ def create_app(config_name=None):
             cefr_filter = request.args.get('cefr_filter', '')
             sheet_filter = request.args.get('sheet_filter', '')
             search = request.args.get('search', '')
+            search_in = request.args.get('search_in', 'name')
             sort = request.args.get('sort', 'name')
             
             def apply_name_search(base_query):
@@ -505,17 +506,18 @@ def create_app(config_name=None):
                     if not tokens:
                         continue
                     # Build grouped conditions with explicit parentheses to avoid SQL precedence issues
-                    token_conditions = [db.func.lower(Student.name).like(f'%{token}%') for token in tokens]
+                    target_col = Student.found_name if search_in == 'found' else Student.name
+                    token_conditions = [db.func.lower(target_col).like(f'%{token}%') for token in tokens]
                     if token_conditions:
                         # (name LIKE token1 AND name LIKE token2 ...)
                         and_group = db.and_(*token_conditions)
                         forward_pattern = ' '.join(tokens)
-                        forward_like = db.func.lower(Student.name).like(f'%{forward_pattern}%')
+                        forward_like = db.func.lower(target_col).like(f'%{forward_pattern}%')
                         term_or_group = db.or_(and_group, forward_like)
                         if len(tokens) > 1:
                             reverse_pattern = ' '.join(reversed(tokens))
                             if reverse_pattern != forward_pattern:
-                                reverse_like = db.func.lower(Student.name).like(f'%{reverse_pattern}%')
+                                reverse_like = db.func.lower(target_col).like(f'%{reverse_pattern}%')
                                 term_or_group = db.or_(term_or_group, reverse_like)
                         # Force parentheses around the entire term group
                         try:
@@ -604,7 +606,8 @@ def create_app(config_name=None):
                 normalized = search.replace('\n', ',').replace(';', ',')
                 search_terms = [term.strip() for term in normalized.split(',') if term.strip()]
                 for st in students.items:
-                    sname = (st.name or '').lower()
+                    target_value = (st.found_name if search_in == 'found' else st.name) or ''
+                    sname = target_value.lower()
                     matched = ''
                     for term in search_terms:
                         raw = term.strip()
@@ -793,6 +796,7 @@ def create_app(config_name=None):
                                  cefr_filter=cefr_filter,
                                  sheet_filter=sheet_filter,
                                  search=search,
+                                 search_in=search_in,
                                  found_names_by_id=found_names_by_id,
                                  sort=sort)
 
