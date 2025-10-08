@@ -1,0 +1,21 @@
+name: Deploy Production (Render)
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy hook (production)
+        env:
+          RENDER_DEPLOY_HOOK_URL_PROD: ${{ secrets.RENDER_DEPLOY_HOOK_URL_PROD }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK_URL_PROD" ]; then
+            echo "RENDER_DEPLOY_HOOK_URL_PROD secret is not set"
+            exit 1
+          fi
+          curl -fsSL -X POST "$RENDER_DEPLOY_HOOK_URL_PROD"
